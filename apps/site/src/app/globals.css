@@ -1,23 +1,32 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Mistral Kit Brand Colors */
+  --mistral-orange: #fa520f;
+  --mistral-beige: #fffaeb;
+  --mistral-black: #101010;
+
+  /* Light mode defaults */
+  --background: #fffaeb;
+  --foreground: #101010;
 }
 
 @theme inline {
+  /* Custom colors */
+  --color-mistral-orange: var(--mistral-orange);
+  --color-mistral-beige: var(--mistral-beige);
+  --color-mistral-black: var(--mistral-black);
+
+  /* Semantic colors */
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+
+  /* Typography - Arial as primary font */
+  --font-sans: Arial, Helvetica, sans-serif;
+  --font-mono: "Courier New", Courier, monospace;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
+/* No dark mode override - always use Mistral brand colors */
 
 body {
   background: var(--background);
