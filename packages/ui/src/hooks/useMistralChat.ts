@@ -24,7 +24,6 @@ export function useMistralChat(opts: Options = {}) {
 
     // Use ref for synchronous access to current messages
     const currentMessages = messagesRef.current;
-    console.log("📸 Captured messages from ref:", currentMessages.length, currentMessages);
 
     // Add user message to both state and ref
     const userMsg = { id: userMsgId, role: "user" as const, content: text };
@@ -36,7 +35,6 @@ export function useMistralChat(opts: Options = {}) {
 
     // Build payload with the captured history
     const historyMessages = currentMessages.map(({ role, content }) => ({ role, content }));
-    console.log("🔍 Building payload with", historyMessages.length, "history messages");
 
     const payload = {
       model: opts.model ?? "mistral-medium-latest",
@@ -48,47 +46,40 @@ export function useMistralChat(opts: Options = {}) {
       ]
     };
 
-    // Debug: log what we're sending
-    console.log("📤 Sending to API:", {
-      messageCount: payload.messages.length,
-      messages: payload.messages
-    });
-
-    const res = await fetch(api, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" }, // cleaner
-      body: JSON.stringify(payload),
-      signal: abortRef.current.signal
-    });
-
-    if (!res.ok) {
-      console.error("API request failed:", res.status, res.statusText);
-      setStreaming(false);
-      return;
-    }
-
-    if (!res.body) { setStreaming(false); return; }
-
-    const reader = res.body.getReader();
-    const decoder = new TextDecoder();
-    let remainder = "";
-
-    // write/append assistant message in place
-    const upsertAssistant = (content: string) => {
-      setMessages(m => {
-        const without = m.filter(msg => msg.id !== assistantId);
-        return [...without, { id: assistantId, role: "assistant", content }];
-      });
-    };
+    let reader: ReadableStreamDefaultReader<Uint8Array> | null = null;
 
     try {
+      const res = await fetch(api, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+        signal: abortRef.current.signal
+      });
+
+      if (!res.ok) {
+        throw new Error(`API request failed: ${res.status} ${res.statusText}`);
+      }
+
+      if (!res.body) {
+        throw new Error("Response body is empty");
+      }
+
+      reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let remainder = "";
+
       while (true) {
+        // Check if aborted before reading
+        if (abortRef.current?.signal.aborted) {
+          break;
+        }
+
         const { done, value } = await reader.read();
         if (done) break;
 
         remainder += decoder.decode(value, { stream: true });
 
-        // naive SSE line split (improve later with a small SSE parser)
+        // Parse SSE chunks
         let idx: number;
         while ((idx = remainder.indexOf("\n\n")) !== -1) {
           const chunk = remainder.slice(0, idx);
@@ -104,10 +95,9 @@ export function useMistralChat(opts: Options = {}) {
           try {
             const json = JSON.parse(data);
             const delta = json?.choices?.[0]?.delta?.content ?? "";
-            const finishReason = json?.choices?.[0]?.finish_reason;
 
             if (delta) {
-              // append incrementally and update both state and ref
+              // Append incrementally and update both state and ref
               setMessages(m => {
                 const existing = m.find(x => x.id === assistantId)?.content ?? "";
                 const without = m.filter(x => x.id !== assistantId);
@@ -117,17 +107,28 @@ export function useMistralChat(opts: Options = {}) {
                 return updated;
               });
             }
-
-            if (finishReason) {
-              console.log("✅ Stream completed, final message count:", messagesRef.current.length);
-            }
           } catch (err) {
-            // silently skip invalid JSON chunks
-            console.warn("Failed to parse SSE chunk:", data, err);
+            // Silently skip invalid JSON chunks (malformed SSE)
           }
         }
       }
+    } catch (err) {
+      // Handle abort gracefully
+      if (err instanceof Error && err.name === 'AbortError') {
+        // Expected abort, don't treat as error
+        return;
+      }
+      // Re-throw other errors
+      throw err;
     } finally {
+      // Always clean up reader and state
+      if (reader) {
+        try {
+          await reader.cancel();
+        } catch {
+          // Ignore cancel errors
+        }
+      }
       setStreaming(false);
     }
   }, [api, opts.model, opts.systemPrompt]);

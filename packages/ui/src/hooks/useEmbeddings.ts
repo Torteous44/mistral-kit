@@ -3,6 +3,8 @@ import { useCallback, useState, useRef } from "react";
 type UseEmbeddingsOptions = {
   model?: string;
   apiProxyUrl?: string;
+  /** Maximum number of texts to embed in a single API call (default: 50) */
+  maxBatchSize?: number;
 };
 
 type EmbeddingResult = {
@@ -25,6 +27,7 @@ export function useEmbeddings(
   const {
     model = "mistral-embed",
     apiProxyUrl = "/api/embeddings",
+    maxBatchSize = 50,
   } = options;
 
   const [embeddings, setEmbeddings] = useState<EmbeddingResult[]>([]);
@@ -43,35 +46,50 @@ export function useEmbeddings(
       const textArray = Array.isArray(texts) ? texts : [texts];
 
       try {
-        const response = await fetch(apiProxyUrl, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            model,
-            input: textArray,
-          }),
-          signal: abortRef.current.signal,
-        });
-
-        if (!response.ok) {
-          throw new Error(`API error: ${response.status} ${response.statusText}`);
+        // Split into batches if needed
+        const batches: string[][] = [];
+        for (let i = 0; i < textArray.length; i += maxBatchSize) {
+          batches.push(textArray.slice(i, i + maxBatchSize));
         }
 
-        const result = await response.json();
-        
-        if (!result.data) {
-          throw new Error("No embeddings in response");
+        // Process batches sequentially to avoid overwhelming the API
+        const allEmbeddings: EmbeddingResult[] = [];
+
+        for (let batchIndex = 0; batchIndex < batches.length; batchIndex++) {
+          const batch = batches[batchIndex];
+
+          const response = await fetch(apiProxyUrl, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              model,
+              input: batch,
+            }),
+            signal: abortRef.current.signal,
+          });
+
+          if (!response.ok) {
+            throw new Error(`API error: ${response.status} ${response.statusText}`);
+          }
+
+          const result = await response.json();
+
+          if (!result.data) {
+            throw new Error("No embeddings in response");
+          }
+
+          const batchEmbeddings: EmbeddingResult[] = result.data.map(
+            (item: any, index: number) => ({
+              embedding: item.embedding,
+              text: batch[index],
+            })
+          );
+
+          allEmbeddings.push(...batchEmbeddings);
         }
 
-        const newEmbeddings: EmbeddingResult[] = result.data.map(
-          (item: any, index: number) => ({
-            embedding: item.embedding,
-            text: textArray[index],
-          })
-        );
-
-        setEmbeddings(newEmbeddings);
-        return newEmbeddings;
+        setEmbeddings(allEmbeddings);
+        return allEmbeddings;
       } catch (err) {
         const errorObj = err instanceof Error ? err : new Error(String(err));
         setError(errorObj);
@@ -80,7 +98,7 @@ export function useEmbeddings(
         setIsLoading(false);
       }
     },
-    [model, apiProxyUrl]
+    [model, apiProxyUrl, maxBatchSize]
   );
 
   const similarity = useCallback((a: number[], b: number[]): number => {

@@ -25,6 +25,7 @@
     "react-dom": "^18 || ^19"
   },
   "dependencies": {
+    "@radix-ui/react-collapsible": "^1.1.12",
     "lucide-react": "^0.553.0",
     "react-markdown": "^10.1.0",
     "zod": "^3.23.8"

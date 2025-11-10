@@ -8,51 +8,42 @@ import { ArrowLeft, ArrowUp, Paperclip, Plus } from "lucide-react";
 import {
   useToolExecutor,
   useEmbeddings,
+  useFileUpload,
+  useOrderedMessages,
   MessageList,
   PromptInput,
   PromptInputTextarea,
   PromptInputButton,
   PromptInputSubmit,
   PromptAttachmentPreview,
-  ToolCallBadge,
+  Tool,
+  ToolHeader,
+  ToolContent,
+  ToolInput,
+  ToolOutput,
   StreamingMarkdown,
   preparePromptWithAttachments,
-  weatherTool,
+  createWeatherTool,
   calculatorTool,
   dateTimeTool,
+  createSemanticSearchTool,
 } from "@mistral/ui";
 import type { ChatAttachment, ChatMessage } from "@mistral/ui";
-import {
-  MAX_FILE_SIZE_MB,
-  stitchChunks,
-  createSearchDocsTool,
-  type UploadedChunk,
-} from "./knowledge";
 
+const weatherTool = createWeatherTool({ apiProxyUrl: "/api/weather" });
 const BASE_TOOLS = [weatherTool, calculatorTool, dateTimeTool] as const;
-
-type AttachmentPreview =
-  | { fileName: string; status: "uploading" }
-  | { fileName: string; status: "ready"; chunkCount: number }
-  | { fileName: string; status: "error"; error: string };
 
 export default function ShowcasePage() {
   const [draft, setDraft] = useState("");
-  const [uploadedChunks, setUploadedChunks] = useState<UploadedChunk[]>([]);
-  const [attachmentPreview, setAttachmentPreview] = useState<AttachmentPreview | null>(null);
-  const [messageOrder, setMessageOrder] = useState<Record<string, number>>({});
-  const orderCounterRef = useRef(0);
-
-  const assignMessageOrder = useCallback((id: string) => {
-    setMessageOrder((prev) => {
-      if (prev[id] !== undefined) return prev;
-      return { ...prev, [id]: orderCounterRef.current++ };
-    });
-  }, []);
-
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const uploadInputRef = useRef<HTMLInputElement | null>(null);
   const { embed } = useEmbeddings({ apiProxyUrl: "/api/embeddings" });
+
+  const fileUpload = useFileUpload({
+    apiUrl: "/api/upload-text",
+    embedFunction: embed,
+    maxFileSizeMB: 4,
+  });
 
   const embedQuery = useCallback(
     async (text: string) => {
@@ -63,8 +54,8 @@ export default function ShowcasePage() {
   );
 
   const uploadedSearchTool = useMemo(
-    () => createSearchDocsTool(uploadedChunks, embedQuery),
-    [uploadedChunks, embedQuery]
+    () => createSemanticSearchTool(fileUpload.chunks, embedQuery),
+    [fileUpload.chunks, embedQuery]
   );
 
   const demoTools = useMemo(
@@ -80,102 +71,26 @@ const toolExecutor = useToolExecutor({
     maxTurns: 6,
   });
 
+  // Use the new hook to maintain message ordering
+  const orderedMessages = useOrderedMessages(toolExecutor.messages);
+
 useEffect(() => {
   if (!scrollRef.current) return;
   scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
 }, [toolExecutor.messages]);
 
-  useEffect(() => {
-    toolExecutor.messages.forEach((message) => {
-      assignMessageOrder(message.id);
-    });
-  }, [toolExecutor.messages, assignMessageOrder]);
-
-  const handleKnowledgeUpload = useCallback(
-    async (file: File) => {
-      if (!file) return;
-
-      if (file.size > MAX_FILE_SIZE_MB * 1024 * 1024) {
-        setAttachmentPreview({
-          fileName: file.name,
-          status: "error",
-          error: `File exceeds ${MAX_FILE_SIZE_MB} MB.`,
-        });
-        return;
-      }
-
-      setAttachmentPreview({ fileName: file.name, status: "uploading" });
-      setUploadedChunks([]);
-
-      try {
-        const isBinary =
-          /\.(pdf|docx)$/i.test(file.name.toLowerCase()) ||
-          file.type === "application/pdf" ||
-          file.type ===
-            "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
-
-        let response: Response;
-        if (isBinary) {
-          const formData = new FormData();
-          formData.append("file", file);
-          response = await fetch("/api/upload-text", {
-            method: "POST",
-            body: formData,
-          });
-        } else {
-          const textBody = await file.text();
-          response = await fetch("/api/upload-text", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ text: textBody }),
-          });
-        }
-
-        const payload = await response.json();
-        if (!payload?.ok || typeof payload.text !== "string") {
-          throw new Error(payload?.error ?? "Upload failed");
-        }
-
-        const chunks = stitchChunks(payload.text);
-        if (!chunks.length) {
-          throw new Error("No text extracted from file.");
-        }
-
-        const embeddingsResult = await embed(chunks);
-        if (!embeddingsResult.length) {
-          throw new Error("Failed to embed chunks.");
-        }
-
-        const combined: UploadedChunk[] = embeddingsResult.map((item, index) => ({
-          id: crypto.randomUUID(),
-          text: chunks[index],
-          embedding: item.embedding,
-          fileName: file.name,
-        }));
-
-        setUploadedChunks(combined);
-        setAttachmentPreview({ fileName: file.name, status: "ready", chunkCount: combined.length });
-      } catch (error) {
-        console.error(error);
-        setAttachmentPreview({
-          fileName: file.name,
-          status: "error",
-          error: error instanceof Error ? error.message : "Upload failed",
-        });
-      }
-    },
-    [embed]
-  );
-
   const handleFileSelection = useCallback(
     (event: React.ChangeEvent<HTMLInputElement>) => {
       const file = event.target.files?.[0];
       if (!file) return;
-      handleKnowledgeUpload(file);
+      fileUpload.uploadFile(file);
       event.target.value = "";
     },
-    [handleKnowledgeUpload]
+    [fileUpload]
   );
+
+  // Use attachment preview from the hook
+  const attachmentPreview = fileUpload.attachmentPreview;
 
 const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
   event.preventDefault();
@@ -206,7 +121,7 @@ const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     });
 
     if (attachments?.length) {
-      setAttachmentPreview(null);
+      fileUpload.reset();
     }
 
     setDraft("");
@@ -215,45 +130,76 @@ const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
 };
 
   const lastAssistantMessageId = useMemo(() => {
-    const assistants = toolExecutor.messages.filter((msg) => msg.role === "assistant");
+    const assistants = orderedMessages.filter((msg) => msg.role === "assistant");
     return assistants[assistants.length - 1]?.id ?? null;
-  }, [toolExecutor.messages]);
-
-  const combinedMessages = useMemo(() => {
-    const all = [...toolExecutor.messages];
-    return all.sort(
-      (a, b) => (messageOrder[a.id] ?? 0) - (messageOrder[b.id] ?? 0)
-    );
-  }, [toolExecutor.messages, messageOrder]);
+  }, [orderedMessages]);
 
   const renderMessage = (message: ChatMessage) => {
+    // Tool result messages
     if (message.role === "tool") {
+      const toolResult = message.content;
+      let parsedResult;
+      try {
+        parsedResult = JSON.parse(toolResult ?? "{}");
+      } catch {
+        parsedResult = toolResult;
+      }
+
       return (
-        <div className="flex justify-center">
-          <ToolCallBadge
+        <Tool defaultOpen={false} className="mx-auto max-w-xl">
+          <ToolHeader
             toolName={message.toolName ?? "tool"}
-            status="success"
-            detail="Result ready"
-            className="inline-flex items-center gap-2 rounded-full border border-mistral-black/20 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-mistral-black"
-            statusClassName="text-mistral-black/60"
+            state="completed"
+            className="w-full"
+            triggerClassName="w-full flex items-center justify-between gap-3 rounded-xl border border-mistral-black/15 bg-white px-4 py-3 text-left transition-colors hover:bg-mistral-beige/30"
+            nameClassName="text-sm font-medium text-mistral-black"
+            badgeClassName="rounded-full bg-green-100 px-2 py-1 text-xs font-semibold uppercase tracking-wider text-green-700"
           />
-        </div>
+          <ToolContent className="mt-2">
+            <ToolOutput
+              output={parsedResult}
+              className="rounded-xl border border-mistral-black/15 bg-white px-4 py-3"
+              labelClassName="mb-2 text-xs font-semibold uppercase tracking-wider text-mistral-black/60"
+              contentClassName="overflow-x-auto rounded-lg bg-mistral-black/5 p-3 text-xs text-mistral-black"
+            />
+          </ToolContent>
+        </Tool>
       );
     }
 
+    // Assistant messages with tool calls (running/pending)
     if (message.role === "assistant" && Array.isArray(message.toolCalls) && message.toolCalls.length > 0) {
       return (
-        <div className="flex flex-col gap-2">
-          {message.toolCalls.map((call) => (
-            <ToolCallBadge
-              key={call.id ?? call.function?.name ?? crypto.randomUUID()}
-              toolName={call.function?.name ?? "tool"}
-              status="pending"
-              detail="Running"
-              className="inline-flex items-center gap-2 rounded-full border border-mistral-black/20 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-mistral-black"
-              statusClassName="text-mistral-black/60"
-            />
-          ))}
+        <div className="mx-auto flex max-w-xl flex-col gap-3">
+          {message.toolCalls.map((call) => {
+            let parsedArgs;
+            try {
+              parsedArgs = call.function?.arguments ? JSON.parse(call.function.arguments) : {};
+            } catch {
+              parsedArgs = call.function?.arguments ?? {};
+            }
+
+            return (
+              <Tool key={call.id ?? call.function?.name ?? crypto.randomUUID()} defaultOpen={true}>
+                <ToolHeader
+                  toolName={call.function?.name ?? "tool"}
+                  state="running"
+                  className="w-full"
+                  triggerClassName="w-full flex items-center justify-between gap-3 rounded-xl border border-mistral-black/15 bg-white px-4 py-3 text-left transition-colors hover:bg-mistral-beige/30"
+                  nameClassName="text-sm font-medium text-mistral-black"
+                  badgeClassName="rounded-full bg-yellow-100 px-2 py-1 text-xs font-semibold uppercase tracking-wider text-yellow-700 animate-pulse"
+                />
+                <ToolContent className="mt-2">
+                  <ToolInput
+                    input={parsedArgs}
+                    className="rounded-xl border border-mistral-black/15 bg-white px-4 py-3"
+                    labelClassName="mb-2 text-xs font-semibold uppercase tracking-wider text-mistral-black/60"
+                    contentClassName="overflow-x-auto rounded-lg bg-mistral-black/5 p-3 text-xs text-mistral-black"
+                  />
+                </ToolContent>
+              </Tool>
+            );
+          })}
         </div>
       );
     }
@@ -326,7 +272,7 @@ const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
         >
 
             <MessageList
-              messages={combinedMessages}
+              messages={orderedMessages}
               className="space-y-4"
               renderMessage={renderMessage}
             />
@@ -347,10 +293,7 @@ const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
                 attachmentPreview.status === "ready" ? attachmentPreview.chunkCount : undefined
               }
               error={attachmentPreview.status === "error" ? attachmentPreview.error : undefined}
-              onRemove={() => {
-                setAttachmentPreview(null);
-                setUploadedChunks([]);
-              }}
+              onRemove={fileUpload.reset}
               className="mb-3 w-fit items-center gap-3 rounded-2xl border border-mistral-black/20 bg-mistral-beige/60 px-3 py-2 text-sm text-mistral-black"
             />
           )}

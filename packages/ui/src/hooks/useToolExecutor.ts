@@ -8,6 +8,8 @@ type UseToolExecutorOptions = {
   apiProxyUrl?: string;
   systemPrompt?: string;
   maxTurns?: number;
+  /** Timeout in milliseconds for each tool execution (default: 30000ms / 30 seconds) */
+  toolTimeout?: number;
   onToolCall?: (toolName: string, args: any, result: any) => void;
 };
 
@@ -33,6 +35,7 @@ export function useToolExecutor(
     apiProxyUrl = "/api/mistral",
     systemPrompt,
     maxTurns = 10,
+    toolTimeout = 30000,
     onToolCall,
   } = options;
 
@@ -175,8 +178,25 @@ export function useToolExecutor(
                 continue;
               }
 
-              const toolResult = await tool.run(args);
-              onToolCall?.(toolName, args, toolResult);
+              // Execute tool with timeout protection
+              let toolResult: any;
+              try {
+                toolResult = await Promise.race([
+                  tool.run(args),
+                  new Promise((_, reject) =>
+                    setTimeout(
+                      () => reject(new Error(`Tool "${toolName}" timed out after ${toolTimeout}ms`)),
+                      toolTimeout
+                    )
+                  ),
+                ]);
+                onToolCall?.(toolName, args, toolResult);
+              } catch (toolErr) {
+                // Tool execution failed or timed out
+                const errorMessage = toolErr instanceof Error ? toolErr.message : String(toolErr);
+                toolResult = { error: errorMessage, toolName };
+                console.error(`Tool execution error for ${toolName}:`, toolErr);
+              }
 
               const toolMsg: ChatMessage = {
                 id: crypto.randomUUID(),
@@ -197,8 +217,9 @@ export function useToolExecutor(
           break;
         }
 
+        // Max turns reached - this is a normal stopping condition, not an error
         if (turnCount >= maxTurns) {
-          throw new Error("Max turns reached");
+          console.warn(`Tool execution stopped: reached maximum turns (${maxTurns})`);
         }
       } catch (err) {
         const errorObj = err instanceof Error ? err : new Error(String(err));
@@ -207,7 +228,7 @@ export function useToolExecutor(
         setIsExecuting(false);
       }
     },
-    [tools, model, apiProxyUrl, systemPrompt, maxTurns, onToolCall]
+    [tools, model, apiProxyUrl, systemPrompt, maxTurns, toolTimeout, onToolCall]
   );
 
   const reset = useCallback(() => {

@@ -42,52 +42,91 @@ async function fetchWeatherFromWttr(location: string) {
   };
 }
 
+async function fetchWeatherFromProxy(location: string, apiProxyUrl: string) {
+  const response = await fetch(apiProxyUrl, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ location }),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Weather API error: ${response.status}`);
+  }
+
+  return await response.json();
+}
+
 type WeatherArgs = z.infer<typeof weatherSchema>;
 
-export const weatherTool: ToolDefinition = {
-  name: "get_weather",
-  description: "Get current weather information for a specific location via wttr.in (no API key required)",
-  schema: weatherSchema,
-  parameters: {
-    type: "object",
-    properties: {
-      location: {
-        type: "string",
-        description: "City name (e.g., 'Paris', 'New York')",
+/**
+ * Creates a weather tool that fetches current weather data.
+ *
+ * @param options.apiProxyUrl - Optional API proxy URL (recommended for client-side usage to avoid CORS)
+ * @returns A ToolDefinition for weather lookups
+ *
+ * @example
+ * ```tsx
+ * // Client-side with API proxy
+ * const weatherTool = createWeatherTool({ apiProxyUrl: '/api/weather' });
+ *
+ * // Server-side direct access
+ * const weatherTool = createWeatherTool();
+ * ```
+ */
+export function createWeatherTool(options: { apiProxyUrl?: string } = {}): ToolDefinition {
+  const { apiProxyUrl } = options;
+
+  return {
+    name: "get_weather",
+    description: "Get current weather information for a specific location",
+    schema: weatherSchema,
+    parameters: {
+      type: "object",
+      properties: {
+        location: {
+          type: "string",
+          description: "City name (e.g., 'Paris', 'New York')",
+        },
       },
+      required: ["location"],
     },
-    required: ["location"],
-  },
-  run: async (args: WeatherArgs) => {
-    const { location } = args;
-    const normalized = location.toLowerCase();
-    let source: "wttr.in" | "fallback" = "wttr.in";
+    run: async (args: WeatherArgs) => {
+      const { location } = args;
+      const normalized = location.toLowerCase();
 
-    try {
-      const live = await fetchWeatherFromWttr(location);
-      return {
-        location,
-        temperatureC: live.temperature,
-        feelsLikeC: live.feelsLike,
-        condition: live.condition,
-        humidity: live.humidity,
-        unit: "celsius",
-        source,
-      };
-    } catch (error) {
-      console.warn("[weatherTool] Falling back to mock data:", error);
-      const fallback = fallbackWeatherData[normalized] || { temp: 20, condition: "clear", humidity: 60 };
-      source = "fallback";
+      try {
+        // Use API proxy if provided, otherwise direct access
+        if (apiProxyUrl) {
+          return await fetchWeatherFromProxy(location, apiProxyUrl);
+        } else {
+          const live = await fetchWeatherFromWttr(location);
+          return {
+            location,
+            temperatureC: live.temperature,
+            feelsLikeC: live.feelsLike,
+            condition: live.condition,
+            humidity: live.humidity,
+            unit: "celsius",
+            source: "wttr.in",
+          };
+        }
+      } catch (error) {
+        console.warn("[weatherTool] Falling back to mock data:", error);
+        const fallback = fallbackWeatherData[normalized] || { temp: 20, condition: "clear", humidity: 60 };
 
-      return {
-        location,
-        temperatureC: fallback.temp,
-        feelsLikeC: fallback.temp,
-        condition: fallback.condition,
-        humidity: fallback.humidity,
-        unit: "celsius",
-        source,
-      };
-    }
-  },
-};
+        return {
+          location,
+          temperatureC: fallback.temp,
+          feelsLikeC: fallback.temp,
+          condition: fallback.condition,
+          humidity: fallback.humidity,
+          unit: "celsius",
+          source: "fallback",
+        };
+      }
+    },
+  };
+}
+
+// Default export for backwards compatibility (uses direct wttr.in access)
+export const weatherTool = createWeatherTool();
