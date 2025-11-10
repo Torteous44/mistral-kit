@@ -35,8 +35,51 @@ export default function StreamingText(props: StreamingTextProps) {
     cursorClassName = "",
   } = props;
 
-  // Simple blink effect using inline styles
   const [cursorVisible, setCursorVisible] = React.useState(true);
+  const [displayedText, setDisplayedText] = React.useState(text);
+  const displayedTextRef = React.useRef(text);
+
+  // Keep ref in sync for animation calculations
+  React.useEffect(() => {
+    displayedTextRef.current = displayedText;
+  }, [displayedText]);
+
+  // Animate characters when streaming flag is on and text grows
+  React.useEffect(() => {
+    if (!isStreaming) {
+      setDisplayedText(text);
+      return;
+    }
+
+    const currentLength = displayedTextRef.current.length;
+    const targetLength = text.length;
+
+    // If text shrank or stayed the same, sync immediately
+    if (targetLength <= currentLength) {
+      setDisplayedText(text);
+      return;
+    }
+
+    let frame: number;
+    let index = currentLength;
+    let cancelled = false;
+
+    const step = () => {
+      if (cancelled) return;
+      index = Math.min(index + 1, targetLength);
+      setDisplayedText(text.slice(0, index));
+      if (index < targetLength) {
+        frame = window.requestAnimationFrame(step);
+      }
+    };
+
+    frame = window.requestAnimationFrame(step);
+
+    return () => {
+      cancelled = true;
+      if (frame) window.cancelAnimationFrame(frame);
+    };
+  }, [text, isStreaming]);
 
   React.useEffect(() => {
     if (!isStreaming || !showCursor) return;
@@ -55,7 +98,7 @@ export default function StreamingText(props: StreamingTextProps) {
       aria-atomic="false"
       aria-busy={isStreaming}
     >
-      {text}
+      {displayedText}
       {isStreaming && showCursor && (
         <span
           className={cursorClassName}

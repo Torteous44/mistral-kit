@@ -1,6 +1,6 @@
 import { useCallback, useState, useRef } from "react";
 import { z } from "zod";
-import type { ChatMessage, ToolDefinition } from "../types/chat";
+import type { ChatAttachment, ChatMessage, ToolDefinition } from "../types/chat";
 
 type UseToolExecutorOptions = {
   tools: ToolDefinition[];
@@ -15,8 +15,13 @@ type UseToolExecutorResult = {
   messages: ChatMessage[];
   isExecuting: boolean;
   error: Error | null;
-  execute: (prompt: string) => Promise<void>;
+  execute: (prompt: string, context?: ExecuteContext) => Promise<void>;
   reset: () => void;
+};
+
+type ExecuteContext = {
+  attachments?: ChatAttachment[];
+  displayContent?: string;
 };
 
 export function useToolExecutor(
@@ -41,7 +46,7 @@ export function useToolExecutor(
   messagesRef.current = messages;
 
   const execute = useCallback(
-    async (prompt: string) => {
+    async (prompt: string, context?: ExecuteContext) => {
       setIsExecuting(true);
       setError(null);
 
@@ -52,6 +57,8 @@ export function useToolExecutor(
         id: crypto.randomUUID(),
         role: "user",
         content: prompt,
+        attachments: context?.attachments,
+        displayContent: context?.displayContent ?? null,
       };
 
       setMessages((m) => [...m, userMsg]);

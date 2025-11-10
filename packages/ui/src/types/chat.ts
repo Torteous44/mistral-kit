@@ -1,9 +1,18 @@
 export type Role = "system" | "user" | "assistant" | "tool";
 
+export type ChatAttachment = {
+  id?: string;
+  fileName: string;
+  chunkCount?: number;
+  metadata?: Record<string, unknown>;
+};
+
 export type ChatMessage = {
   id: string;
   role: Role;
   content: string | null;
+  attachments?: ChatAttachment[];
+  displayContent?: string | null;
   toolName?: string;
   toolCallId?: string;
   toolCalls?: Array<{

@@ -4,7 +4,8 @@
     "outDir": "dist",
     "declaration": true,
     "declarationMap": true,
-    "emitDeclarationOnly": false
+    "emitDeclarationOnly": false,
+    "types": ["node", "react", "react-dom"]
   },
   "include": ["src"]
 }
