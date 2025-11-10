@@ -24,7 +24,7 @@ export type PromptInputTextareaProps = React.TextareaHTMLAttributes<HTMLTextArea
 export const PromptInputTextarea = React.forwardRef<
   HTMLTextAreaElement,
   PromptInputTextareaProps
->(({ className = "", minRows = 2, maxRows = 8, onChange, ...props }, ref) => {
+>(({ className = "", minRows = 2, maxRows = 8, onChange, style, ...props }, ref) => {
   const innerRef = React.useRef<HTMLTextAreaElement | null>(null);
 
   React.useImperativeHandle(ref, () => innerRef.current as HTMLTextAreaElement);
@@ -52,6 +52,7 @@ export const PromptInputTextarea = React.forwardRef<
         requestAnimationFrame(resize);
       }}
       rows={minRows}
+      style={{ resize: "none", ...style }}
       {...props}
     />
   );

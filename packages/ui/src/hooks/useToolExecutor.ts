@@ -2,7 +2,49 @@ import { useCallback, useState, useRef } from "react";
 import { z } from "zod";
 import type { ChatAttachment, ChatMessage, ToolDefinition } from "../types/chat";
 
-type UseToolExecutorOptions = {
+type ChatPayloadMessage =
+  | {
+      role: "system" | "user";
+      content: string;
+    }
+  | {
+      role: "assistant";
+      content: string;
+      tool_calls?: ChatMessage["toolCalls"];
+    }
+  | {
+      role: "tool";
+      content: string;
+      tool_call_id?: string;
+    };
+
+type ChatCompletionPayload = {
+  model: string;
+  messages: ChatPayloadMessage[];
+  tools: Array<{
+    type: "function";
+    function: {
+      name: string;
+      description: string;
+      parameters: ToolDefinition["parameters"];
+    };
+  }>;
+  tool_choice: "auto" | string;
+  stream: boolean;
+};
+
+type ChatCompletionResponse = {
+  choices?: Array<{
+    message?: {
+      content?: string | null;
+      tool_calls?: ChatMessage["toolCalls"];
+    };
+  }>;
+};
+
+export type SendChatHandler = (payload: ChatCompletionPayload, signal: AbortSignal) => Promise<ChatCompletionResponse>;
+
+export type UseToolExecutorOptions = {
   tools: ToolDefinition[];
   model?: string;
   apiProxyUrl?: string;
@@ -11,9 +53,11 @@ type UseToolExecutorOptions = {
   /** Timeout in milliseconds for each tool execution (default: 30000ms / 30 seconds) */
   toolTimeout?: number;
   onToolCall?: (toolName: string, args: any, result: any) => void;
+  /** Optional transport override for sending chat completions */
+  sendChat?: SendChatHandler;
 };
 
-type UseToolExecutorResult = {
+export type UseToolExecutorResult = {
   messages: ChatMessage[];
   isExecuting: boolean;
   error: Error | null;
@@ -24,6 +68,25 @@ type UseToolExecutorResult = {
 type ExecuteContext = {
   attachments?: ChatAttachment[];
   displayContent?: string;
+};
+
+const defaultSendChat = async (
+  apiProxyUrl: string,
+  payload: ChatCompletionPayload,
+  signal: AbortSignal
+): Promise<ChatCompletionResponse> => {
+  const response = await fetch(apiProxyUrl, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+    signal,
+  });
+
+  if (!response.ok) {
+    throw new Error(`API error: ${response.status}`);
+  }
+
+  return response.json();
 };
 
 export function useToolExecutor(
@@ -37,6 +100,7 @@ export function useToolExecutor(
     maxTurns = 10,
     toolTimeout = 30000,
     onToolCall,
+    sendChat,
   } = options;
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -71,15 +135,20 @@ export function useToolExecutor(
       let turnCount = 0;
 
       try {
+        const transport = sendChat
+          ? sendChat
+          : (body: ChatCompletionPayload, signal: AbortSignal) =>
+              defaultSendChat(apiProxyUrl, body, signal);
+
         while (turnCount < maxTurns) {
           turnCount++;
 
-          const toolsPayload = tools.map((t) => {
+          const toolsPayload: ChatCompletionPayload["tools"] = tools.map((t) => {
             // Use provided parameters or default to empty object schema
             const parameters = t.parameters || { type: "object", properties: {} };
 
             return {
-              type: "function",
+              type: "function" as const,
               function: {
                 name: t.name,
                 description: t.description,
@@ -88,9 +157,9 @@ export function useToolExecutor(
             };
           });
 
-          const payloadMessages = [
-            ...(systemPrompt ? [{ role: "system", content: systemPrompt }] : []),
-            ...currentMessages.map((m) => {
+          const payloadMessages: ChatPayloadMessage[] = [
+            ...(systemPrompt ? [{ role: "system" as const, content: systemPrompt }] : []),
+            ...currentMessages.map((m): ChatPayloadMessage => {
               if (m.role === "tool") {
                 return {
                   role: "tool",
@@ -107,8 +176,9 @@ export function useToolExecutor(
                 };
               }
 
+              const role = m.role === "system" ? "system" : m.role === "user" ? "user" : "assistant";
               return {
-                role: m.role,
+                role,
                 content: m.content ?? "",
               };
             }),
@@ -122,18 +192,7 @@ export function useToolExecutor(
             stream: false,
           };
 
-          const response = await fetch(apiProxyUrl, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(payload),
-            signal: abortRef.current.signal,
-          });
-
-          if (!response.ok) {
-            throw new Error(`API error: ${response.status}`);
-          }
-
-          const result = await response.json();
+          const result = await transport(payload, abortRef.current.signal);
           const choice = result.choices?.[0];
 
           if (!choice) {
@@ -228,7 +287,7 @@ export function useToolExecutor(
         setIsExecuting(false);
       }
     },
-    [tools, model, apiProxyUrl, systemPrompt, maxTurns, toolTimeout, onToolCall]
+    [tools, model, apiProxyUrl, systemPrompt, maxTurns, toolTimeout, onToolCall, sendChat]
   );
 
   const reset = useCallback(() => {

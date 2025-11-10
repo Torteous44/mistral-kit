@@ -1,18 +1,18 @@
 import { useCallback, useState, useRef } from "react";
 
-type UseEmbeddingsOptions = {
+export type UseEmbeddingsOptions = {
   model?: string;
   apiProxyUrl?: string;
   /** Maximum number of texts to embed in a single API call (default: 50) */
   maxBatchSize?: number;
 };
 
-type EmbeddingResult = {
+export type EmbeddingResult = {
   embedding: number[];
   text: string;
 };
 
-type UseEmbeddingsResult = {
+export type UseEmbeddingsResult = {
   embeddings: EmbeddingResult[];
   isLoading: boolean;
   error: Error | null;

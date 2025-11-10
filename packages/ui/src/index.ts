@@ -7,6 +7,11 @@ export { default as StreamingMarkdown } from "./components/StreamingMarkdown";
 export { default as ToolCallBadge } from "./components/ToolCallBadge";
 export { default as FileUploadPanel } from "./components/FileUploadPanel";
 export {
+  default as MistralChatPanel,
+  type MistralChatPanelProps,
+  type MistralChatPanelClassNames,
+} from "./components/MistralChatPanel";
+export {
   PromptInput,
   PromptInputTextarea,
   PromptInputToolbar,
@@ -53,6 +58,8 @@ export {
   type InlineCitationProps,
   type InlineCitationSourceProps,
 } from "./components/InlineCitation";
+export { ChatStatus, type ChatStatusProps } from "./components/ChatStatus";
+export { UploadStatus, type UploadStatusProps } from "./components/UploadStatus";
 
 // Hooks
 export * from "./hooks/useMistralChat";
@@ -62,6 +69,9 @@ export * from "./hooks/useEmbeddings";
 export * from "./hooks/useStreamingText";
 export * from "./hooks/useFileUpload";
 export * from "./hooks/useOrderedMessages";
+export * from "./hooks/useMistralAttachments";
+export * from "./hooks/useMistralTools";
+export * from "./hooks/useMistralMarkdown";
 
 // Types
 export * from "./types/chat";

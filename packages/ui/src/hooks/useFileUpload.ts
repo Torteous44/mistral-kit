@@ -18,7 +18,7 @@ type EmbeddingResult = {
   text: string;
 };
 
-type UseFileUploadOptions = {
+export type UseFileUploadOptions = {
   /** URL of the text extraction API endpoint */
   apiUrl: string;
   /** Function to embed text chunks (typically from useEmbeddings) */
@@ -35,7 +35,7 @@ type UseFileUploadOptions = {
   onError?: (error: Error) => void;
 };
 
-type UseFileUploadResult = {
+export type UseFileUploadResult = {
   /** Upload a file and process it into embedded chunks */
   uploadFile: (file: File) => Promise<void>;
   /** Current status of the upload process */

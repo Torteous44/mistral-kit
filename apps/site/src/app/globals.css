@@ -1,4 +1,6 @@
 @import "tailwindcss";
+@source "../../../../packages/ui/src/**/*.{ts,tsx,js,jsx}";
+@source "../../node_modules/@mistral/ui/dist/**/*.{ts,tsx,js,jsx}";
 
 :root {
   /* Mistral Kit Brand Colors */

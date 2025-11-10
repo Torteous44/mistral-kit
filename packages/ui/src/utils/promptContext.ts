@@ -20,7 +20,7 @@ export function buildAttachmentHint(
   )}. Use the search_docs tool to reference the embedded content.`;
 }
 
-type PrepareOptions = {
+export type PrepareOptions = {
   fallbackText?: (attachment: ChatAttachment) => string;
   mentionChunks?: boolean;
 };

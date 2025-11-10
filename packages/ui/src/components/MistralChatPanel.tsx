@@ -1,0 +1,443 @@
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type FormEvent,
+  type ChangeEvent,
+} from "react";
+import type { Components } from "react-markdown";
+import type { ChatAttachment, ChatMessage, ToolDefinition } from "../types/chat";
+import MessageList from "./MessageList";
+import {
+  PromptInput,
+  PromptInputTextarea,
+  PromptInputButton,
+  PromptInputSubmit,
+  PromptAttachmentPreview,
+} from "./PromptInput";
+import { Plus, ArrowUp, AlertTriangle } from "lucide-react";
+import { useToolExecutor, type SendChatHandler } from "../hooks/useToolExecutor";
+import { useOrderedMessages } from "../hooks/useOrderedMessages";
+import { useEmbeddings, type UseEmbeddingsOptions } from "../hooks/useEmbeddings";
+import { useMistralAttachments } from "../hooks/useMistralAttachments";
+import { useMistralTools, type SemanticSearchToolOptions } from "../hooks/useMistralTools";
+import { useMistralMarkdown } from "../hooks/useMistralMarkdown";
+import { ChatMessageBubble, type ChatMessageBubbleAttachmentClassNames } from "./ChatMessage";
+import { ChatStatus } from "./ChatStatus";
+import { UploadStatus } from "./UploadStatus";
+import type { PrepareOptions } from "../utils/promptContext";
+import type { UseFileUploadOptions } from "../hooks/useFileUpload";
+
+export type MistralChatPanelClassNames = {
+  container?: string;
+  scrollArea?: string;
+  messageList?: string;
+  messageWrapper?: string;
+  toolError?: string;
+  embeddingsError?: string;
+  uploadStatus?: string;
+  prompt?: string;
+  attachmentPreview?: string;
+  textarea?: string;
+  uploadButton?: string;
+  submitButton?: string;
+  controls?: string;
+  controlsUpload?: string;
+  controlsSubmit?: string;
+  userBubble?: string;
+  assistantBubble?: string;
+  messageAttachmentUser?: string;
+  messageAttachmentAssistant?: string;
+  messageAttachmentBadge?: string;
+  messageAttachmentFilename?: string;
+  messageAttachmentMeta?: string;
+};
+
+export type MistralChatPanelProps = {
+  className?: string;
+  model?: string;
+  apiProxyUrl?: string;
+  systemPrompt?: string;
+  maxTurns?: number;
+  toolTimeout?: number;
+  sendChat?: SendChatHandler;
+  tools?: ToolDefinition[];
+  baseTools?: ToolDefinition[];
+  extraTools?: ToolDefinition[];
+  semanticSearchOptions?: Omit<SemanticSearchToolOptions, "chunks" | "embedQuery"> & { enabled?: boolean };
+  enableUploads?: boolean;
+  uploadOptions?: Partial<Omit<UseFileUploadOptions, "embedFunction">>;
+  attachmentOptions?: PrepareOptions;
+  acceptedFileTypes?: string;
+  embeddingsOptions?: UseEmbeddingsOptions;
+  onToolCall?: (toolName: string, args: any, result: any) => void;
+  messageListClassName?: string;
+  markdownComponents?: Components;
+  onActionSelect?: (prompt: string) => void;
+  showUploadStatus?: boolean;
+  classNames?: MistralChatPanelClassNames;
+  unstyled?: boolean;
+};
+
+const mergeClassNames = (...classes: Array<string | undefined | null>) =>
+  classes.filter(Boolean).join(" ");
+
+const applyClass = (
+  fallback: string,
+  override: string | undefined,
+  unstyled: boolean
+): string => {
+  if (override !== undefined) return override;
+  return unstyled ? "" : fallback;
+};
+
+export function MistralChatPanel({
+  className = "",
+  model = "mistral-medium-latest",
+  apiProxyUrl = "/api/mistral",
+  systemPrompt,
+  maxTurns = 6,
+  toolTimeout = 30000,
+  sendChat,
+  tools,
+  baseTools = [],
+  extraTools = [],
+  semanticSearchOptions,
+  enableUploads = true,
+  uploadOptions,
+  attachmentOptions,
+  acceptedFileTypes,
+  embeddingsOptions,
+  onToolCall,
+  messageListClassName: messageListClassNameProp,
+  markdownComponents: markdownOverride,
+  onActionSelect,
+  showUploadStatus = true,
+  classNames,
+  unstyled = false,
+}: MistralChatPanelProps) {
+  const [draft, setDraft] = useState("");
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+
+  const { embed, error: embeddingsError } = useEmbeddings(embeddingsOptions);
+  const embedFunction = useCallback((texts: string[]) => embed(texts), [embed]);
+
+  const attachments = useMistralAttachments({
+    enabled: enableUploads,
+    embedFunction: enableUploads ? embedFunction : undefined,
+    uploadOptions,
+    attachmentOptions,
+    acceptedFileTypes,
+  });
+
+  const embedQuery = useCallback(
+    async (text: string) => {
+      const result = await embed(text);
+      return result[0]?.embedding ?? [];
+    },
+    [embed]
+  );
+
+  const computedTools =
+    tools ??
+    useMistralTools({
+      baseTools,
+      extraTools,
+      semanticSearch:
+        semanticSearchOptions && semanticSearchOptions.enabled === false
+          ? undefined
+          : {
+              enabled: semanticSearchOptions?.enabled,
+              contextChunksForGeneral: semanticSearchOptions?.contextChunksForGeneral,
+              chunks: attachments.chunks,
+              embedQuery,
+            },
+    });
+
+  const toolExecutor = useToolExecutor({
+    tools: computedTools,
+    model,
+    apiProxyUrl,
+    systemPrompt,
+    maxTurns,
+    toolTimeout,
+    sendChat,
+    onToolCall,
+  });
+
+  const orderedMessages = useOrderedMessages(toolExecutor.messages);
+
+  useEffect(() => {
+    if (!scrollRef.current) return;
+    scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+  }, [orderedMessages]);
+
+  const lastAssistantMessageId = useMemo(() => {
+    const assistants = orderedMessages.filter((msg) => msg.role === "assistant");
+    return assistants[assistants.length - 1]?.id ?? null;
+  }, [orderedMessages]);
+
+  const handleActionPrompt = useCallback(
+    (prompt: string) => {
+      setDraft(prompt);
+      scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
+      onActionSelect?.(prompt);
+    },
+    [onActionSelect]
+  );
+
+  const markdownComponents = markdownOverride ?? useMistralMarkdown({ onActionSelect: handleActionPrompt });
+
+  const containerClass = mergeClassNames(
+    applyClass("flex h-full flex-col gap-6", classNames?.container, unstyled),
+    className
+  );
+  const scrollAreaClass = applyClass("flex-1 space-y-6 overflow-y-auto pr-2", classNames?.scrollArea, unstyled);
+  const messageListBaseClass = applyClass("space-y-4", classNames?.messageList, unstyled);
+  const messageListClass = mergeClassNames(messageListBaseClass, messageListClassNameProp);
+  const promptClass = applyClass(
+    "rounded-3xl border border-mistral-black/15 bg-white px-2 py-2",
+    classNames?.prompt,
+    unstyled
+  );
+  const attachmentPreviewClass = applyClass(
+    "mb-3 w-fit items-center gap-3 rounded-2xl border border-mistral-black/20 bg-mistral-beige/60 px-3 py-2 text-sm text-mistral-black",
+    classNames?.attachmentPreview,
+    unstyled
+  );
+  const textareaClass = applyClass(
+    "h-auto w-full resize-none rounded-3xl bg-transparent px-4 py-3 text-sm text-mistral-black focus:outline-none",
+    classNames?.textarea,
+    unstyled
+  );
+  const uploadButtonClass = applyClass(
+    "flex h-10 w-10 items-center justify-center rounded-full border border-mistral-black/30 bg-white text-mistral-black transition-colors hover:border-mistral-orange hover:text-mistral-orange disabled:opacity-40",
+    classNames?.uploadButton,
+    unstyled
+  );
+  const submitButtonClass = applyClass(
+    "flex items-center justify-center rounded-full bg-mistral-black px-5 py-2 text-sm font-semibold text-mistral-beige transition-colors hover:bg-mistral-orange disabled:opacity-40",
+    classNames?.submitButton,
+    unstyled
+  );
+  const controlsClass = applyClass(
+    "flex w-full flex-wrap items-center gap-3 pt-3",
+    classNames?.controls,
+    unstyled
+  );
+  const controlsUploadClass = applyClass(
+    "flex items-center gap-2",
+    classNames?.controlsUpload,
+    unstyled
+  );
+  const controlsSubmitClass = applyClass(
+    "ml-auto flex items-center",
+    classNames?.controlsSubmit,
+    unstyled
+  );
+  const toolErrorClass = applyClass("w-full", classNames?.toolError, unstyled);
+  const embeddingsErrorClass = applyClass("w-full", classNames?.embeddingsError, unstyled);
+  const uploadStatusClass = applyClass("w-full", classNames?.uploadStatus, unstyled);
+  const messageWrapperClass = applyClass("", classNames?.messageWrapper, unstyled);
+  const userBubbleClassNameValue =
+    classNames?.userBubble ?? (unstyled ? "" : undefined);
+  const assistantBubbleClassNameValue =
+    classNames?.assistantBubble ?? (unstyled ? "" : undefined);
+
+  const attachmentClassNames = useMemo<ChatMessageBubbleAttachmentClassNames | undefined>(() => {
+    const provided =
+      classNames?.messageAttachmentUser ||
+      classNames?.messageAttachmentAssistant ||
+      classNames?.messageAttachmentBadge ||
+      classNames?.messageAttachmentFilename ||
+      classNames?.messageAttachmentMeta;
+
+    if (provided || unstyled) {
+      return {
+        userContainer: classNames?.messageAttachmentUser ?? (unstyled ? "" : undefined),
+        assistantContainer: classNames?.messageAttachmentAssistant ?? (unstyled ? "" : undefined),
+        badge: classNames?.messageAttachmentBadge ?? (unstyled ? "" : undefined),
+        fileName: classNames?.messageAttachmentFilename ?? (unstyled ? "" : undefined),
+        meta: classNames?.messageAttachmentMeta ?? (unstyled ? "" : undefined),
+      };
+    }
+
+    return undefined;
+  }, [
+    classNames?.messageAttachmentAssistant,
+    classNames?.messageAttachmentBadge,
+    classNames?.messageAttachmentFilename,
+    classNames?.messageAttachmentMeta,
+    classNames?.messageAttachmentUser,
+    unstyled,
+  ]);
+
+  const handleSubmit = useCallback(
+    (event: FormEvent<HTMLFormElement>) => {
+      event.preventDefault();
+      const trimmed = draft.trim();
+      const hasReadyAttachment = attachments.hasReadyAttachment;
+
+      if (!trimmed && !hasReadyAttachment) {
+        return;
+      }
+
+      const { visibleText, modelText } = attachments.preparePrompt(trimmed);
+
+      if (!visibleText) return;
+
+      const attachmentPayload = attachments.attachments ?? undefined;
+
+      toolExecutor.execute(modelText, {
+        attachments: attachmentPayload,
+        displayContent: visibleText,
+      });
+
+      if (attachmentPayload?.length) {
+        attachments.resetAttachments();
+      }
+
+      setDraft("");
+    },
+    [attachments, draft, toolExecutor]
+  );
+
+  const renderMessage = useCallback(
+    (message: ChatMessage) => (
+      <ChatMessageBubble
+        message={message}
+        animateAssistant={message.role === "assistant" && message.id === lastAssistantMessageId}
+        markdownComponents={markdownComponents}
+        className={messageWrapperClass}
+        userBubbleClassName={userBubbleClassNameValue}
+        assistantBubbleClassName={assistantBubbleClassNameValue}
+        attachmentClassNames={attachmentClassNames}
+      />
+    ),
+    [
+      attachmentClassNames,
+      assistantBubbleClassNameValue,
+      lastAssistantMessageId,
+      markdownComponents,
+      messageWrapperClass,
+      userBubbleClassNameValue,
+    ]
+  );
+
+  const handleUploadButton = useCallback(
+    (event: React.MouseEvent<HTMLButtonElement>) => {
+      event.preventDefault();
+      attachments.uploadInputRef.current?.click();
+    },
+    [attachments.uploadInputRef]
+  );
+
+  const uploadStatus = attachments.fileUpload?.status ?? "idle";
+  const shouldShowUploadStatus = enableUploads && showUploadStatus && uploadStatus !== "idle";
+
+  return (
+    <div className={containerClass}>
+      <div ref={scrollRef} className={scrollAreaClass}>
+        <MessageList messages={orderedMessages} className={messageListClass} renderMessage={renderMessage} />
+      </div>
+
+      {toolExecutor.error && (
+        <ChatStatus
+          variant="error"
+          message={toolExecutor.error.message}
+          icon={<AlertTriangle className="h-4 w-4" />}
+          className={toolErrorClass}
+          unstyled={unstyled}
+        />
+      )}
+
+      {embeddingsError && (
+        <ChatStatus
+          variant="error"
+          message={embeddingsError.message}
+          icon={<AlertTriangle className="h-4 w-4" />}
+          className={embeddingsErrorClass}
+          unstyled={unstyled}
+        />
+      )}
+
+      {shouldShowUploadStatus && attachments.fileUpload && (
+        <UploadStatus
+          status={attachments.fileUpload.status}
+          fileName={attachments.fileUpload.fileName}
+          error={attachments.fileUpload.error}
+          className={uploadStatusClass}
+          unstyled={unstyled}
+        />
+      )}
+
+      <PromptInput onSubmit={handleSubmit} className={promptClass}>
+        {attachments.attachmentPreview && (
+          <PromptAttachmentPreview
+            fileName={attachments.attachmentPreview.fileName}
+            status={attachments.attachmentPreview.status}
+            chunkCount={
+              attachments.attachmentPreview.status === "ready"
+                ? attachments.attachmentPreview.chunkCount
+                : undefined
+            }
+            error={attachments.attachmentPreview.status === "error" ? attachments.fileUpload?.error?.message : undefined}
+            onRemove={attachments.resetAttachments}
+            className={attachmentPreviewClass}
+          />
+        )}
+
+        <div className="space-y-3">
+          <PromptInputTextarea
+            value={draft}
+            onChange={(event) => setDraft(event.target.value)}
+            disabled={toolExecutor.isExecuting}
+            placeholder="Describe what you need..."
+            className={textareaClass}
+            minRows={2}
+            maxRows={6}
+          />
+
+          <div className={controlsClass}>
+            {enableUploads && (
+              <div className={controlsUploadClass}>
+                <PromptInputButton
+                  className={uploadButtonClass}
+                  onClick={handleUploadButton}
+                  aria-label="Upload knowledge"
+                  disabled={attachments.attachmentPreview?.status === "uploading"}
+                >
+                  <Plus className="h-4 w-4" />
+                </PromptInputButton>
+              </div>
+            )}
+
+            <div className={controlsSubmitClass}>
+              <PromptInputSubmit
+                status={toolExecutor.isExecuting ? "submitting" : "idle"}
+                disabled={toolExecutor.isExecuting || (!draft.trim() && !attachments.hasReadyAttachment)}
+                className={submitButtonClass}
+              >
+                <ArrowUp className="h-4 w-4" />
+              </PromptInputSubmit>
+            </div>
+          </div>
+        </div>
+
+        {enableUploads && (
+          <input
+            ref={attachments.uploadInputRef}
+            type="file"
+            accept={attachments.attachmentAccept}
+            className="hidden"
+            onChange={attachments.handleFileSelection as unknown as (event: ChangeEvent<HTMLInputElement>) => void}
+          />
+        )}
+      </PromptInput>
+    </div>
+  );
+}
+
+export default MistralChatPanel;
