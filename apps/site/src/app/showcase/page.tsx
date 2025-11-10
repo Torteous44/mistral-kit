@@ -4,120 +4,51 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
+import { ArrowLeft, ArrowUp, Paperclip, Plus } from "lucide-react";
 import {
   useToolExecutor,
   useEmbeddings,
-  chunkText,
   MessageList,
   PromptInput,
   PromptInputTextarea,
-  PromptInputToolbar,
-  PromptInputActions,
   PromptInputButton,
   PromptInputSubmit,
+  PromptAttachmentPreview,
   ToolCallBadge,
+  StreamingMarkdown,
+  preparePromptWithAttachments,
   weatherTool,
   calculatorTool,
   dateTimeTool,
-  type ToolDefinition,
 } from "@mistral/ui";
-import type { ChatMessage } from "@mistral/ui";
-
-type UploadedChunk = {
-  id: string;
-  text: string;
-  embedding: number[];
-  fileName: string;
-};
+import type { ChatAttachment, ChatMessage } from "@mistral/ui";
+import {
+  MAX_FILE_SIZE_MB,
+  stitchChunks,
+  createSearchDocsTool,
+  type UploadedChunk,
+} from "./knowledge";
 
 const BASE_TOOLS = [weatherTool, calculatorTool, dateTimeTool] as const;
-const MAX_FILE_SIZE_MB = 4;
-const CHUNK_SIZE = 800;
-const CHUNK_OVERLAP = 120;
 
-const suggestions = [
-  "What's the weather in Paris?",
-  "Calculate 15% of 84.50",
-  "Outline today's date and time.",
-  "Search the uploaded file for travel tips.",
-];
-
-function stitchChunks(text: string) {
-  const base = chunkText(text, CHUNK_SIZE);
-  return base.map((chunk, index) => {
-    if (index === 0) return chunk;
-    const prev = base[index - 1] ?? "";
-    const tail = prev.slice(Math.max(0, prev.length - CHUNK_OVERLAP));
-    return `${tail} ${chunk}`.trim();
-  });
-}
-
-function createSearchDocsTool(
-  chunks: UploadedChunk[],
-  embedQuery: (text: string) => Promise<number[]>
-): ToolDefinition {
-  return {
-    name: "search_docs",
-    description: "Search the uploaded knowledge via semantic similarity",
-    parameters: {
-      type: "object",
-      properties: {
-        query: { type: "string", description: "Search request" },
-        limit: { type: "number", description: "Number of matches", default: 3 },
-      },
-      required: ["query"],
-    },
-    run: async ({ query, limit = 3 }: { query: string; limit?: number }) => {
-      if (!chunks.length) {
-        return { query, matches: [], note: "Upload a file first." };
-      }
-
-      const queryEmbedding = await embedQuery(query);
-      if (!queryEmbedding.length) {
-        throw new Error("Failed to embed query");
-      }
-
-      const ranked = chunks
-        .map((chunk) => ({
-          chunkId: chunk.id,
-          fileName: chunk.fileName,
-          preview: chunk.text.slice(0, 220).replace(/\s+/g, " ").trim(),
-          similarity: cosineSimilarity(queryEmbedding, chunk.embedding),
-        }))
-        .sort((a, b) => b.similarity - a.similarity)
-        .slice(0, limit);
-
-      return {
-        query,
-        matches: ranked,
-        totalChunks: chunks.length,
-      };
-    },
-  };
-}
-
-function cosineSimilarity(a: number[], b: number[]) {
-  const len = Math.min(a.length, b.length);
-  let dot = 0;
-  let normA = 0;
-  let normB = 0;
-
-  for (let i = 0; i < len; i++) {
-    dot += a[i] * b[i];
-    normA += a[i] * a[i];
-    normB += b[i] * b[i];
-  }
-
-  if (!normA || !normB) return 0;
-  return dot / (Math.sqrt(normA) * Math.sqrt(normB));
-}
+type AttachmentPreview =
+  | { fileName: string; status: "uploading" }
+  | { fileName: string; status: "ready"; chunkCount: number }
+  | { fileName: string; status: "error"; error: string };
 
 export default function ShowcasePage() {
   const [draft, setDraft] = useState("");
   const [uploadedChunks, setUploadedChunks] = useState<UploadedChunk[]>([]);
-  const [uploadStatus, setUploadStatus] = useState<"idle" | "processing" | "ready" | "error">("idle");
-  const [uploadError, setUploadError] = useState<string | null>(null);
-  const [uploadedFileName, setUploadedFileName] = useState<string | null>(null);
+  const [attachmentPreview, setAttachmentPreview] = useState<AttachmentPreview | null>(null);
+  const [messageOrder, setMessageOrder] = useState<Record<string, number>>({});
+  const orderCounterRef = useRef(0);
+
+  const assignMessageOrder = useCallback((id: string) => {
+    setMessageOrder((prev) => {
+      if (prev[id] !== undefined) return prev;
+      return { ...prev, [id]: orderCounterRef.current++ };
+    });
+  }, []);
 
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const uploadInputRef = useRef<HTMLInputElement | null>(null);
@@ -141,7 +72,7 @@ export default function ShowcasePage() {
     [uploadedSearchTool]
   );
 
-  const toolExecutor = useToolExecutor({
+const toolExecutor = useToolExecutor({
     tools: demoTools,
     model: "mistral-medium-latest",
     apiProxyUrl: "/api/mistral",
@@ -149,24 +80,31 @@ export default function ShowcasePage() {
     maxTurns: 6,
   });
 
+useEffect(() => {
+  if (!scrollRef.current) return;
+  scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+}, [toolExecutor.messages]);
+
   useEffect(() => {
-    if (!scrollRef.current) return;
-    scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-  }, [toolExecutor.messages]);
+    toolExecutor.messages.forEach((message) => {
+      assignMessageOrder(message.id);
+    });
+  }, [toolExecutor.messages, assignMessageOrder]);
 
   const handleKnowledgeUpload = useCallback(
     async (file: File) => {
       if (!file) return;
 
       if (file.size > MAX_FILE_SIZE_MB * 1024 * 1024) {
-        setUploadStatus("error");
-        setUploadError(`File exceeds ${MAX_FILE_SIZE_MB} MB.`);
+        setAttachmentPreview({
+          fileName: file.name,
+          status: "error",
+          error: `File exceeds ${MAX_FILE_SIZE_MB} MB.`,
+        });
         return;
       }
 
-      setUploadStatus("processing");
-      setUploadError(null);
-      setUploadedFileName(file.name);
+      setAttachmentPreview({ fileName: file.name, status: "uploading" });
       setUploadedChunks([]);
 
       try {
@@ -216,10 +154,14 @@ export default function ShowcasePage() {
         }));
 
         setUploadedChunks(combined);
-        setUploadStatus("ready");
+        setAttachmentPreview({ fileName: file.name, status: "ready", chunkCount: combined.length });
       } catch (error) {
-        setUploadStatus("error");
-        setUploadError(error instanceof Error ? error.message : "Upload failed");
+        console.error(error);
+        setAttachmentPreview({
+          fileName: file.name,
+          status: "error",
+          error: error instanceof Error ? error.message : "Upload failed",
+        });
       }
     },
     [embed]
@@ -235,12 +177,54 @@ export default function ShowcasePage() {
     [handleKnowledgeUpload]
   );
 
-  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    if (!draft.trim()) return;
-    toolExecutor.execute(draft.trim());
+const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+  event.preventDefault();
+  const trimmed = draft.trim();
+  const attachmentReady = attachmentPreview?.status === "ready";
+
+    if (!trimmed && !attachmentReady) {
+      return;
+    }
+
+  const attachments: ChatAttachment[] | null =
+    attachmentReady && attachmentPreview
+      ? [
+          {
+            id: crypto.randomUUID(),
+            fileName: attachmentPreview.fileName,
+            chunkCount: attachmentPreview.chunkCount,
+          },
+        ]
+      : null;
+
+  const { visibleText, modelText } = preparePromptWithAttachments(trimmed, attachments ?? undefined);
+
+  if (visibleText) {
+    toolExecutor.execute(modelText, {
+      attachments: attachments ?? undefined,
+      displayContent: visibleText,
+    });
+
+    if (attachments?.length) {
+      setAttachmentPreview(null);
+    }
+
     setDraft("");
-  };
+    return;
+  }
+};
+
+  const lastAssistantMessageId = useMemo(() => {
+    const assistants = toolExecutor.messages.filter((msg) => msg.role === "assistant");
+    return assistants[assistants.length - 1]?.id ?? null;
+  }, [toolExecutor.messages]);
+
+  const combinedMessages = useMemo(() => {
+    const all = [...toolExecutor.messages];
+    return all.sort(
+      (a, b) => (messageOrder[a.id] ?? 0) - (messageOrder[b.id] ?? 0)
+    );
+  }, [toolExecutor.messages, messageOrder]);
 
   const renderMessage = (message: ChatMessage) => {
     if (message.role === "tool") {
@@ -275,38 +259,54 @@ export default function ShowcasePage() {
     }
 
     const isUser = message.role === "user";
+    const attachments = message.attachments ?? [];
+    const hasAttachments = attachments.length > 0;
+    const displayContent = message.displayContent ?? message.content ?? "";
+    const shouldAnimate = message.role === "assistant" && message.id === lastAssistantMessageId;
+
     return (
       <div className={isUser ? "flex justify-end" : "flex justify-start"}>
         <div
           className={
             isUser
-              ? "max-w-[75%] rounded-full bg-mistral-black px-4 py-2 text-sm text-mistral-beige"
-              : "max-w-[75%] rounded-3xl border border-mistral-black/15 bg-white px-4 py-2 text-sm text-mistral-black"
+              ? "max-w-[75%] rounded-3xl bg-mistral-black px-4 py-3 text-sm text-mistral-beige"
+              : "max-w-[75%] rounded-3xl border border-mistral-black/15 bg-white px-4 py-3 text-sm text-mistral-black"
           }
         >
-          <div className="prose prose-sm max-w-none text-current">
-            <ReactMarkdown>{message.content ?? ""}</ReactMarkdown>
-          </div>
+          {hasAttachments &&
+            attachments.map((attachment) => (
+              <div
+                key={attachment.id ?? attachment.fileName}
+                className="mb-3 rounded-2xl border border-white/30 bg-white/10 px-3 py-2 text-xs text-mistral-beige last:mb-3"
+              >
+                <div className="flex items-center gap-2 text-[0.6rem] font-semibold uppercase tracking-wide text-mistral-beige/80">
+                  <Paperclip className="h-3 w-3" />
+                  <span>Attachment</span>
+                </div>
+                <p className="mt-1 text-sm font-medium">{attachment.fileName}</p>
+                {typeof attachment.chunkCount === "number" && (
+                  <p className="text-[0.65rem] text-mistral-beige/80">
+                    {attachment.chunkCount} chunks embedded
+                  </p>
+                )}
+              </div>
+            ))}
+
+          {message.role === "assistant" ? (
+            <StreamingMarkdown text={message.content ?? ""} animate={shouldAnimate} />
+          ) : displayContent ? (
+            <div className="prose prose-sm max-w-none text-current">
+              <ReactMarkdown>{displayContent}</ReactMarkdown>
+            </div>
+          ) : hasAttachments ? null : (
+            <span className="text-xs uppercase tracking-[0.3em] text-mistral-beige/80">
+              Sent an attachment
+            </span>
+          )}
         </div>
       </div>
     );
   };
-
-  const statusLabel =
-    uploadStatus === "processing"
-      ? "Processing"
-      : uploadStatus === "ready"
-      ? "Ready"
-      : uploadStatus === "error"
-      ? "Error"
-      : "Idle";
-
-  const helperText =
-    uploadStatus === "processing"
-      ? `Processing ${uploadedFileName ?? "file"} and generating embeddings.`
-      : uploadStatus === "ready"
-      ? `${uploadedChunks.length} chunks available.`
-      : "Uploads power the search tool.";
 
   return (
     <div className="min-h-screen bg-mistral-beige text-mistral-black">
@@ -316,87 +316,80 @@ export default function ShowcasePage() {
             href="/"
             className="rounded-full border border-mistral-black/30 px-4 py-1 text-xs tracking-[0.3em] text-mistral-black hover:border-mistral-orange hover:text-mistral-orange transition-colors"
           >
-            Back
+            <ArrowLeft/>
           </Link>
-          <span>mistral-medium-latest</span>
         </div>
 
         <div
           ref={scrollRef}
           className="flex-1 overflow-y-auto space-y-4 pr-2"
         >
-          {toolExecutor.messages.length === 0 ? (
-            <p className="text-sm text-mistral-black/45">Start a conversation to trigger the tools.</p>
-          ) : (
+
             <MessageList
-              messages={toolExecutor.messages}
+              messages={combinedMessages}
               className="space-y-4"
               renderMessage={renderMessage}
             />
-          )}
+
         </div>
 
-        <div className="flex flex-wrap gap-2 text-xs text-mistral-black/60">
-          {suggestions.map((suggestion) => (
-            <button
-              key={suggestion}
-              type="button"
-              onClick={() => setDraft(suggestion)}
-              className="rounded-full border border-mistral-black/20 px-3 py-1 hover:border-mistral-orange hover:text-mistral-orange transition-colors"
-              disabled={toolExecutor.isExecuting}
-            >
-              {suggestion}
-            </button>
-          ))}
-        </div>
+
 
         <PromptInput
           onSubmit={handleSubmit}
-          className="rounded-3xl border border-mistral-black/15 bg-white shadow-sm"
+          className="rounded-3xl border border-mistral-black/15 bg-white  px-2 py-2"
         >
-          <PromptInputTextarea
-            value={draft}
-            onChange={(event) => setDraft(event.target.value)}
-            disabled={toolExecutor.isExecuting}
-            placeholder="Describe what you need..."
-            className="h-auto w-full resize-none rounded-3xl bg-transparent px-4 py-3 text-sm text-mistral-black focus:outline-none"
-            minRows={2}
-            maxRows={6}
-          />
+          {attachmentPreview && (
+            <PromptAttachmentPreview
+              fileName={attachmentPreview.fileName}
+              status={attachmentPreview.status}
+              chunkCount={
+                attachmentPreview.status === "ready" ? attachmentPreview.chunkCount : undefined
+              }
+              error={attachmentPreview.status === "error" ? attachmentPreview.error : undefined}
+              onRemove={() => {
+                setAttachmentPreview(null);
+                setUploadedChunks([]);
+              }}
+              className="mb-3 w-fit items-center gap-3 rounded-2xl border border-mistral-black/20 bg-mistral-beige/60 px-3 py-2 text-sm text-mistral-black"
+            />
+          )}
 
-        <PromptInputToolbar className="flex items-center justify-between border-t border-mistral-black/10 px-4 py-3 text-xs text-mistral-black/60">
-            <PromptInputActions className="flex items-center gap-3">
-              <span className="uppercase tracking-[0.3em] text-[0.6rem]">
-                Knowledge · {statusLabel}
-              </span>
-              <PromptInputButton
-                className="rounded-full border border-mistral-black/20 px-3 py-1 text-[0.6rem] font-semibold uppercase tracking-[0.3em]"
-                onClick={(event) => {
-                  event.preventDefault();
-                  uploadInputRef.current?.click();
-                }}
-                disabled={uploadStatus === "processing"}
-              >
-                Ingest
-              </PromptInputButton>
-              <PromptInputButton
-                className="rounded-full border border-mistral-black/20 px-3 py-1 text-[0.6rem] font-semibold uppercase tracking-[0.3em]"
-                onClick={(event) => {
-                  event.preventDefault();
-                  setDraft("");
-                }}
-                disabled={!draft && !toolExecutor.isExecuting}
-              >
-                Clear
-              </PromptInputButton>
-            </PromptInputActions>
+          <div className="relative">
+            <PromptInputTextarea
+              value={draft}
+              onChange={(event) => setDraft(event.target.value)}
+              disabled={toolExecutor.isExecuting}
+              placeholder="Describe what you need..."
+              className="h-auto w-full resize-none rounded-3xl bg-transparent px-4 py-3 pr-14 pb-32 text-sm text-mistral-black focus:outline-none"
+              minRows={2}
+              maxRows={6}
+            />
+
+            <PromptInputButton
+              className="absolute bottom-4 left-4 flex h-9 w-9 items-center justify-center rounded-full border border-mistral-black/30 bg-white text-mistral-black hover:border-mistral-orange hover:text-mistral-orange transition-colors disabled:opacity-40"
+              onClick={(event) => {
+                event.preventDefault();
+                uploadInputRef.current?.click();
+              }}
+              aria-label="Upload knowledge"
+              disabled={attachmentPreview?.status === "uploading"}
+            >
+              <Plus className="h-4 w-4" />
+            </PromptInputButton>
 
             <PromptInputSubmit
               status={toolExecutor.isExecuting ? "submitting" : "idle"}
-              disabled={!draft.trim() && !toolExecutor.isExecuting}
-              className="rounded-full bg-mistral-black px-4 py-2 text-sm font-medium text-mistral-beige transition-colors hover:bg-mistral-orange disabled:opacity-40"
-            />
-          </PromptInputToolbar>
+              disabled={
+                toolExecutor.isExecuting ||
+                (!draft.trim() && attachmentPreview?.status !== "ready")
+              }
+              className="absolute bottom-4 right-4 flex h-10 w-10 items-center justify-center rounded-full bg-mistral-black text-mistral-beige transition-colors hover:bg-mistral-orange disabled:opacity-40"
+            >
+              <ArrowUp className="h-4 w-4" />
+            </PromptInputSubmit>
+          </div>
+
           <input
             ref={uploadInputRef}
             type="file"
@@ -404,13 +397,6 @@ export default function ShowcasePage() {
             className="hidden"
             onChange={handleFileSelection}
           />
-          <p className="px-4 pb-3 text-[0.65rem] text-mistral-black/60">
-            {uploadStatus === "error" ? (
-              <span className="text-red-600">{uploadError}</span>
-            ) : (
-              helperText
-            )}
-          </p>
         </PromptInput>
       </div>
     </div>

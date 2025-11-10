@@ -24,59 +24,7 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Features Grid */}
-        <div className="grid md:grid-cols-2 gap-6 mb-16">
-          <div className="bg-white rounded-2xl border border-mistral-black/10 p-6">
-            <h3 className="text-lg font-semibold text-mistral-black mb-2">
-              Unstyled Components
-            </h3>
-            <p className="text-mistral-black/60 text-sm">
-              Fully customizable UI primitives with className props. No opinions, full control over your design.
-            </p>
-          </div>
 
-          <div className="bg-white rounded-2xl border border-mistral-black/10 p-6">
-            <h3 className="text-lg font-semibold text-mistral-black mb-2">
-              Headless Hooks
-            </h3>
-            <p className="text-mistral-black/60 text-sm">
-              Type-safe React hooks for streaming chat, tool execution, JSON mode, and embeddings.
-            </p>
-          </div>
-
-          <div className="bg-white rounded-2xl border border-mistral-black/10 p-6">
-            <h3 className="text-lg font-semibold text-mistral-black mb-2">
-              Edge Runtime
-            </h3>
-            <p className="text-mistral-black/60 text-sm">
-              Fast, globally distributed API proxies running on Vercel Edge. Secure API key handling.
-            </p>
-          </div>
-
-          <div className="bg-white rounded-2xl border border-mistral-black/10 p-6">
-            <h3 className="text-lg font-semibold text-mistral-black mb-2">
-              Tool Calling
-            </h3>
-            <p className="text-mistral-black/60 text-sm">
-              Built-in function calling with automatic execution and Zod schema validation.
-            </p>
-          </div>
-        </div>
-
-        {/* Tech Stack */}
-        <div className="bg-white rounded-2xl border border-mistral-black/10 p-6">
-          <h3 className="text-lg font-semibold text-mistral-black mb-4">Built With</h3>
-          <div className="flex flex-wrap gap-3">
-            {["Next.js 16", "React 19", "TypeScript", "Tailwind CSS 4", "Mistral AI"].map((tech) => (
-              <span
-                key={tech}
-                className="px-3 py-1 bg-mistral-beige text-mistral-black text-sm rounded-lg border border-mistral-black/10"
-              >
-                {tech}
-              </span>
-            ))}
-          </div>
-        </div>
       </main>
     </div>
   );
