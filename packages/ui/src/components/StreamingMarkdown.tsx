@@ -1,11 +1,13 @@
 import * as React from "react";
-import ReactMarkdown from "react-markdown";
+import ReactMarkdown, { type Options as ReactMarkdownOptions } from "react-markdown";
 import { useStreamingText } from "../hooks/useStreamingText";
 
 type StreamingMarkdownProps = {
   text: string;
   animate?: boolean;
   className?: string;
+  components?: ReactMarkdownOptions["components"];
+  remarkPlugins?: ReactMarkdownOptions["remarkPlugins"];
 };
 
 /**
@@ -16,12 +18,16 @@ const StreamingMarkdown: React.FC<StreamingMarkdownProps> = ({
   text,
   animate = false,
   className = "prose prose-sm max-w-none text-current",
+  components,
+  remarkPlugins,
 }) => {
   const displayed = useStreamingText(text, { animate });
 
   return (
     <div className={className}>
-      <ReactMarkdown>{displayed}</ReactMarkdown>
+      <ReactMarkdown components={components} remarkPlugins={remarkPlugins}>
+        {displayed}
+      </ReactMarkdown>
     </div>
   );
 };

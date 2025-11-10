@@ -23,6 +23,36 @@ export {
   ToolOutput,
   type ToolState,
 } from "./components/Tool";
+export {
+  Actions,
+  Action,
+  type ActionsProps,
+  type ActionProps,
+} from "./components/Actions";
+export {
+  CodeBlock,
+  CodeBlockCopyButton,
+  type CodeBlockProps,
+  type CodeBlockCopyButtonProps,
+} from "./components/CodeBlock";
+export {
+  InlineCitation,
+  InlineCitationText,
+  InlineCitationCard,
+  InlineCitationCardTrigger,
+  InlineCitationCardBody,
+  InlineCitationCarousel,
+  InlineCitationCarouselContent,
+  InlineCitationCarouselItem,
+  InlineCitationCarouselHeader,
+  InlineCitationCarouselIndex,
+  InlineCitationCarouselPrev,
+  InlineCitationCarouselNext,
+  InlineCitationSource,
+  InlineCitationQuote,
+  type InlineCitationProps,
+  type InlineCitationSourceProps,
+} from "./components/InlineCitation";
 
 // Hooks
 export * from "./hooks/useMistralChat";
