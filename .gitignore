@@ -1,0 +1,25 @@
+cat > .gitignore <<'EOF'
+# deps & builds
+node_modules/
+.pnpm-store/
+dist/
+build/
+.next/
+out/
+coverage/
+
+# env & local
+.env*
+!.env.example
+.DS_Store
+
+# logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# editor
+.vscode/
+.idea/
+EOF
