@@ -8,19 +8,20 @@ import {
   createWeatherTool,
   calculatorTool,
   dateTimeTool,
-  type MistralChatPanelClassNames,
+  type ToolDefinition,
 } from "@matthewporteous/mistral-kit";
 
 const weatherTool = createWeatherTool({ apiProxyUrl: "/api/weather" });
 const BASE_TOOLS = [weatherTool, calculatorTool, dateTimeTool] as const;
 
 const sharedPanelProps = {
-  baseTools: [...BASE_TOOLS],
+  baseTools: [...BASE_TOOLS] as ToolDefinition[],
   apiProxyUrl: "/api/mistral",
   embeddingsOptions: { apiProxyUrl: "/api/embeddings" },
   uploadOptions: { apiUrl: "/api/upload-text", maxFileSizeMB: 4 },
   semanticSearchOptions: { contextChunksForGeneral: 10 },
-  systemPrompt: "You are an Assistant. You DO NOT have access to the internet. YOU DO NOT USE EMOJIS",
+  systemPrompt:
+    "You are a focused assistant. Use tools when they provide better answers, cite document snippets when relevant, and prefer concise factual replies. You do not browse the public internet; rely only on conversation context, uploaded documents, and registered tools. Avoid emojis and small talk—opt for direct answers with actionable steps.",
   promptPlaceholder: "Ask anything...",
 } as const;
 

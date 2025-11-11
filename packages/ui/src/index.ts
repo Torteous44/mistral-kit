@@ -88,3 +88,6 @@ export { createSemanticSearchTool } from "./utils/rag";
 
 // Clients
 export { uploadText } from "./clients/uploader";
+
+// Default export (for consumers who prefer `import MistralChatPanel from "@matthewporteous/mistral-kit"`)
+export { default } from "./components/MistralChatPanel";
