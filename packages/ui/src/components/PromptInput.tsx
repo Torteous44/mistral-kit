@@ -19,12 +19,13 @@ PromptInput.displayName = "PromptInput";
 export type PromptInputTextareaProps = React.TextareaHTMLAttributes<HTMLTextAreaElement> & {
   minRows?: number;
   maxRows?: number;
+  submitOnEnter?: boolean;
 };
 
 export const PromptInputTextarea = React.forwardRef<
   HTMLTextAreaElement,
   PromptInputTextareaProps
->(({ className = "", minRows = 2, maxRows = 8, onChange, style, ...props }, ref) => {
+>(({ className = "", minRows = 2, maxRows = 8, onChange, onKeyDown, style, submitOnEnter = true, ...props }, ref) => {
   const innerRef = React.useRef<HTMLTextAreaElement | null>(null);
 
   React.useImperativeHandle(ref, () => innerRef.current as HTMLTextAreaElement);
@@ -50,6 +51,14 @@ export const PromptInputTextarea = React.forwardRef<
       onChange={(event) => {
         onChange?.(event);
         requestAnimationFrame(resize);
+      }}
+      onKeyDown={(event) => {
+        if (submitOnEnter && event.key === "Enter" && !event.shiftKey) {
+          event.preventDefault();
+          event.currentTarget.form?.requestSubmit();
+          return;
+        }
+        onKeyDown?.(event);
       }}
       rows={minRows}
       style={{ resize: "none", ...style }}
@@ -234,7 +243,7 @@ export function PromptAttachmentPreview({
             background: "none",
             cursor: "pointer",
             lineHeight: 0,
-            padding: "0 0.25rem",
+            padding: "0.25rem 0.25rem",
             display: "inline-flex",
             alignItems: "center",
             justifyContent: "center",

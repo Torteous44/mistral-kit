@@ -1,3 +1,5 @@
+ "use client";
+
 import Link from "next/link";
 import SyntaxHighlighter from "react-syntax-highlighter";
 import { oneLight } from "react-syntax-highlighter/dist/cjs/styles/prism";
@@ -189,33 +191,6 @@ export default function Home() {
         </section>
 
 
-        {/* Commands */}
-        <section className="space-y-6">
-          <header className="space-y-2">
-            <h2 className="text-3xl font-semibold">Essential pnpm commands</h2>
-            <p className="text-base text-mistral-black/70">Run from repo root unless specified.</p>
-          </header>
-          <div className="grid gap-6 md:grid-cols-2">
-            <div className="rounded-3xl border border-mistral-black/10 bg-white/90 p-6 space-y-3">
-              <h3 className="text-lg font-semibold">Workspace root</h3>
-              <ul className="text-sm text-mistral-black/80 space-y-2">
-                <li><code className="font-mono text-mistral-black">pnpm -w dev</code> — Next.js dev server + library watch</li>
-                <li><code className="font-mono text-mistral-black">pnpm -w build</code> — builds every workspace</li>
-                <li><code className="font-mono text-mistral-black">pnpm -w lint</code> — ESLint across the monorepo</li>
-                <li><code className="font-mono text-mistral-black">pnpm -w test</code> — runs Vitest suites (packages/ui)</li>
-              </ul>
-            </div>
-            <div className="rounded-3xl border border-mistral-black/10 bg-white/90 p-6 space-y-3">
-              <h3 className="text-lg font-semibold">packages/ui</h3>
-              <ul className="text-sm text-mistral-black/80 space-y-2">
-                <li><code className="font-mono text-mistral-black">pnpm -C packages/ui dev</code> — tsup watch mode</li>
-                <li><code className="font-mono text-mistral-black">pnpm -C packages/ui build</code> — emit `dist/` (ESM + d.ts)</li>
-                <li><code className="font-mono text-mistral-black">pnpm -C packages/ui test</code> — Vitest + Testing Library</li>
-                <li><code className="font-mono text-mistral-black">pnpm -C packages/ui typecheck</code> — `tsc --noEmit`</li>
-              </ul>
-            </div>
-          </div>
-        </section>
 
         {/* CTA */}
         <section className="rounded-[40px] border border-mistral-black/10 bg-mistral-black text-mistral-beige p-10 space-y-4">

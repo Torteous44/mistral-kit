@@ -20,6 +20,7 @@ Auto-resizing `<textarea>` optimized for chat inputs. It constrains height betwe
 | maxRows | `number` | true | `8` | Maximum rows before the textarea stops growing. |
 | className | `string` | true | `""` | Classes applied to the `<textarea>`. |
 | style | `React.CSSProperties` | true |  | Additional inline styles merged after disabling native resize. |
+| submitOnEnter | `boolean` | true | `true` | When true, pressing Enter submits the parent form (Shift+Enter still inserts a newline). |
 | onChange | `React.ChangeEventHandler<HTMLTextAreaElement>` | true |  | Change handler; auto-resize still fires a `requestAnimationFrame` update. |
 | ...textareaProps | `React.TextareaHTMLAttributes<HTMLTextAreaElement>` | true |  | All other native textarea props (name, placeholder, disabled, etc.). |
 
