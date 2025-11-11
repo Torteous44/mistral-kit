@@ -7,7 +7,12 @@
     "strict": true,
     "jsx": "react-jsx",
     "baseUrl": ".",
-    "paths": { "@mistral/ui/*": ["packages/ui/src/*"] },
+    "paths": {
+      "@mistral/ui": ["packages/ui/src"],
+      "@mistral/ui/*": ["packages/ui/src/*"],
+      "@mistral/ui/server": ["packages/ui/src/server"],
+      "@mistral/ui/next/api/*": ["packages/ui/src/next/api/*"]
+    },
     "types": ["node"]
   }
 }

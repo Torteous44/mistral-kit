@@ -26,7 +26,6 @@ import { useMistralTools, type SemanticSearchToolOptions } from "../hooks/useMis
 import { useMistralMarkdown } from "../hooks/useMistralMarkdown";
 import { ChatMessageBubble, type ChatMessageBubbleAttachmentClassNames } from "./ChatMessage";
 import { ChatStatus } from "./ChatStatus";
-import { UploadStatus } from "./UploadStatus";
 import type { PrepareOptions } from "../utils/promptContext";
 import type { UseFileUploadOptions } from "../hooks/useFileUpload";
 
@@ -37,7 +36,6 @@ export type MistralChatPanelClassNames = {
   messageWrapper?: string;
   toolError?: string;
   embeddingsError?: string;
-  uploadStatus?: string;
   prompt?: string;
   attachmentPreview?: string;
   textarea?: string;
@@ -76,7 +74,7 @@ export type MistralChatPanelProps = {
   messageListClassName?: string;
   markdownComponents?: Components;
   onActionSelect?: (prompt: string) => void;
-  showUploadStatus?: boolean;
+  promptPlaceholder?: string;
   classNames?: MistralChatPanelClassNames;
   unstyled?: boolean;
   animateAssistantResponses?: boolean;
@@ -115,7 +113,7 @@ export function MistralChatPanel({
   messageListClassName: messageListClassNameProp,
   markdownComponents: markdownOverride,
   onActionSelect,
-  showUploadStatus = true,
+  promptPlaceholder = "Describe what you need...",
   classNames,
   unstyled = false,
   animateAssistantResponses = false,
@@ -241,7 +239,6 @@ export function MistralChatPanel({
   );
   const toolErrorClass = applyClass("w-full", classNames?.toolError, unstyled);
   const embeddingsErrorClass = applyClass("w-full", classNames?.embeddingsError, unstyled);
-  const uploadStatusClass = applyClass("w-full", classNames?.uploadStatus, unstyled);
   const messageWrapperClass = applyClass("", classNames?.messageWrapper, unstyled);
   const userBubbleClassNameValue =
     classNames?.userBubble ?? (unstyled ? "" : undefined);
@@ -339,9 +336,6 @@ export function MistralChatPanel({
     [attachments.uploadInputRef]
   );
 
-  const uploadStatus = attachments.fileUpload?.status ?? "idle";
-  const shouldShowUploadStatus = enableUploads && showUploadStatus && uploadStatus !== "idle";
-
   return (
     <div className={containerClass}>
       <div ref={scrollRef} className={scrollAreaClass}>
@@ -368,16 +362,6 @@ export function MistralChatPanel({
         />
       )}
 
-      {shouldShowUploadStatus && attachments.fileUpload && (
-        <UploadStatus
-          status={attachments.fileUpload.status}
-          fileName={attachments.fileUpload.fileName}
-          error={attachments.fileUpload.error}
-          className={uploadStatusClass}
-          unstyled={unstyled}
-        />
-      )}
-
       <PromptInput onSubmit={handleSubmit} className={promptClass}>
         {attachments.attachmentPreview && (
           <PromptAttachmentPreview
@@ -399,7 +383,7 @@ export function MistralChatPanel({
             value={draft}
             onChange={(event) => setDraft(event.target.value)}
             disabled={toolExecutor.isExecuting}
-            placeholder="Describe what you need..."
+            placeholder={promptPlaceholder}
             className={textareaClass}
             minRows={2}
             maxRows={6}

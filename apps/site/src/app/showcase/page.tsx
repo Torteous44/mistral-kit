@@ -19,7 +19,9 @@ const sharedPanelProps = {
   apiProxyUrl: "/api/mistral",
   embeddingsOptions: { apiProxyUrl: "/api/embeddings" },
   uploadOptions: { apiUrl: "/api/upload-text", maxFileSizeMB: 4 },
-  semanticSearchOptions: { contextChunksForGeneral: 5 },
+  semanticSearchOptions: { contextChunksForGeneral: 10 },
+  systemPrompt: "You are an Assistant. You DO NOT have access to the internet. YOU DO NOT USE EMOJIS",
+  promptPlaceholder: "Ask anything...",
 } as const;
 
 export default function ShowcasePage() {

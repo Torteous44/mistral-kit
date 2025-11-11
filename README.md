@@ -234,6 +234,61 @@ pnpm -C apps/site dev
 # Open http://localhost:3000
 ```
 
+### Plug-and-Play Setup for Consumers
+
+If you're installing `@mistral/ui` inside your own Next.js app, you only need three steps:
+
+1. `pnpm install @mistral/ui`
+2. Add `MISTRAL_API_KEY=<your-key>` to your environment
+3. Run the scaffolder (recommended):  
+   ```bash
+   # From your project root (uses npm by default)
+   npx mistral-kit init
+   
+   # or, if your Next.js app lives elsewhere
+   npx mistral-kit init -- --dir apps/site
+   ```
+   This command creates the four API route files for you. Use `--app-dir src/app` if your `app` folder lives under `src/`.
+
+   Prefer pnpm? `pnpm mistral-kit init -- --dir apps/site`
+
+   If you’d rather do it manually, re-export the provided handlers (only the ones you need):
+
+```ts
+// app/api/mistral/route.ts
+import { POST as chatHandler } from "@mistral/ui/next/api/chat";
+export const runtime = "edge";
+export const dynamic = "force-dynamic";
+export const POST = chatHandler;
+
+// app/api/embeddings/route.ts (optional, for semantic search)
+import { POST as embeddingsHandler } from "@mistral/ui/next/api/embeddings";
+export const runtime = "edge";
+export const POST = embeddingsHandler;
+
+// app/api/upload-text/route.ts (optional, for attachments)
+import { POST as uploadHandler } from "@mistral/ui/next/api/upload-text";
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+export const POST = uploadHandler;
+
+// app/api/weather/route.ts (optional, for built-in weather tool)
+import { POST as weatherHandler } from "@mistral/ui/next/api/weather";
+export const runtime = "edge";
+export const dynamic = "force-dynamic";
+export const POST = weatherHandler;
+```
+
+With the server routes in place, you can drop the chat UI anywhere:
+
+```tsx
+import { MistralChatPanel } from "@mistral/ui";
+
+export default function Demo() {
+  return <MistralChatPanel apiProxyUrl="/api/mistral" />;
+}
+```
+
 ---
 
 ## Project Roadmap

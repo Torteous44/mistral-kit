@@ -59,7 +59,6 @@ export {
   type InlineCitationSourceProps,
 } from "./components/InlineCitation";
 export { ChatStatus, type ChatStatusProps } from "./components/ChatStatus";
-export { UploadStatus, type UploadStatusProps } from "./components/UploadStatus";
 
 // Hooks
 export * from "./hooks/useMistralChat";

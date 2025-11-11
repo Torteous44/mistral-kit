@@ -9,14 +9,42 @@
     ".": {
       "import": "./dist/index.js",
       "types": "./dist/index.d.ts"
+    },
+    "./server": {
+      "import": "./dist/server.js",
+      "types": "./dist/server.d.ts"
+    },
+    "./clients/mistral": {
+      "import": "./dist/clients/mistral.js",
+      "types": "./dist/clients/mistral.d.ts"
+    },
+    "./next/api/chat": {
+      "import": "./dist/next/api/chat.js",
+      "types": "./dist/next/api/chat.d.ts"
+    },
+    "./next/api/embeddings": {
+      "import": "./dist/next/api/embeddings.js",
+      "types": "./dist/next/api/embeddings.d.ts"
+    },
+    "./next/api/upload-text": {
+      "import": "./dist/next/api/upload-text.js",
+      "types": "./dist/next/api/upload-text.d.ts"
+    },
+    "./next/api/weather": {
+      "import": "./dist/next/api/weather.js",
+      "types": "./dist/next/api/weather.d.ts"
     }
   },
   "files": [
-    "dist"
+    "dist",
+    "bin"
   ],
+  "bin": {
+    "mistral-kit": "./bin/mistral-kit.js"
+  },
   "scripts": {
-    "build": "tsup src/index.ts --format=esm --dts --clean",
-    "dev": "tsup src/index.ts --format=esm --dts --watch",
+    "build": "tsup src/index.ts src/server.ts src/clients/mistral.ts src/next/api/chat.ts src/next/api/embeddings.ts src/next/api/upload-text.ts src/next/api/weather.ts --format=esm --dts --clean",
+    "dev": "tsup src/index.ts src/server.ts src/clients/mistral.ts src/next/api/chat.ts src/next/api/embeddings.ts src/next/api/upload-text.ts src/next/api/weather.ts --format=esm --dts --watch",
     "lint": "eslint .",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
@@ -32,6 +60,7 @@
     "@radix-ui/react-tooltip": "^1.2.8",
     "embla-carousel-react": "^8.6.0",
     "lucide-react": "^0.553.0",
+    "pdf-parse": "^1.1.4",
     "react-markdown": "^10.1.0",
     "react-syntax-highlighter": "^16.1.0",
     "remark-gfm": "^4.0.1",
@@ -51,6 +80,7 @@
     "jsdom": "^27.1.0",
     "tsup": "^8.0.0",
     "typescript": "^5.6.0",
-    "vitest": "^4.0.8"
+    "vitest": "^4.0.8",
+    "@types/pdf-parse": "^1.1.5"
   }
 }
