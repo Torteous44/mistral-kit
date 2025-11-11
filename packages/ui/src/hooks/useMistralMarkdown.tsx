@@ -1,4 +1,4 @@
-import { Children, useMemo, type ReactNode } from "react";
+import React, { Children, Fragment, isValidElement, useMemo, type ReactNode } from "react";
 import type { Components } from "react-markdown";
 import { Copy, Check } from "lucide-react";
 import { CodeBlock, CodeBlockCopyButton } from "../components/CodeBlock";
@@ -48,6 +48,30 @@ export function useMistralMarkdown(options: UseMistralMarkdownOptions = {}): Com
 
   return useMemo<Components>(
     () => ({
+      p({ children, ...props }) {
+        const childArray = Children.toArray(children).filter((child) => {
+          if (child === null || child === undefined) return false;
+          if (typeof child === "string") return child.trim().length > 0;
+          if (typeof child === "number") return true;
+          if (isValidElement(child) && child.type === Fragment) {
+            return true;
+          }
+          return true;
+        });
+
+        if (childArray.length === 0) {
+          return null;
+        }
+
+        if (childArray.length === 1) {
+          const onlyChild = childArray[0];
+          if (isValidElement(onlyChild) && isBlockElement(onlyChild)) {
+            return <>{onlyChild}</>;
+          }
+        }
+
+        return <p {...props}>{childArray}</p>;
+      },
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       code({ inline, className, children }: any) {
         const textContent = Children.toArray(children)
@@ -61,24 +85,35 @@ export function useMistralMarkdown(options: UseMistralMarkdownOptions = {}): Com
         const match = /language-(\w+)/.exec(className ?? "");
         const language = match?.[1] ?? "text";
 
-        if (!inline && language === "citations") {
+        if (inline) {
+          return (
+            <code className={className}>
+              {children}
+            </code>
+          );
+        }
+
+        if (language === "citations") {
           const citations = safeJsonParse<CitationEntry[]>(raw);
           if (citations?.length) {
             return <CitationsBlock citations={citations} />;
           }
         }
 
-        if (!inline && language === "actions") {
+        if (language === "actions") {
           const actions = safeJsonParse<ResponseAction[]>(raw);
           if (actions?.length && onActionSelect) {
             return <ActionsBlock actions={actions} onSelect={onActionSelect} />;
           }
         }
 
-        if (inline) {
+        const isSingleLine = !raw.includes("\n");
+        if (isSingleLine && raw.length <= 120) {
           return (
-            <code className={className}>
-              {children}
+            <code
+              className={`${className ?? ""} inline-block rounded-md bg-neutral-100 px-2 py-1 text-sm font-mono text-neutral-900`}
+            >
+              {raw}
             </code>
           );
         }
@@ -104,6 +139,21 @@ function safeJsonParse<T>(value: string): T | null {
   } catch {
     return null;
   }
+}
+
+function isBlockElement(node: ReactNode): boolean {
+  if (!isValidElement(node)) {
+    return false;
+  }
+
+  const blockTags = new Set(["div", "pre", "table", "ul", "ol", "li", "section", "article", "figure", "blockquote", "CodeBlock"]);
+
+  if (typeof node.type === "string") {
+    return blockTags.has(node.type);
+  }
+
+  // Custom components (functions/classes) are treated as block by default
+  return true;
 }
 
 function CitationsBlock({ citations }: { citations: CitationEntry[] }) {

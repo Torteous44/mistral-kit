@@ -1,4 +1,5 @@
 import { useCallback, useState, useRef } from "react";
+import { flushSync } from "react-dom";
 import { z } from "zod";
 import type { ChatAttachment, ChatMessage, ToolDefinition } from "../types/chat";
 
@@ -73,7 +74,8 @@ type ExecuteContext = {
 const defaultSendChat = async (
   apiProxyUrl: string,
   payload: ChatCompletionPayload,
-  signal: AbortSignal
+  signal: AbortSignal,
+  onChunk?: (content: string) => void
 ): Promise<ChatCompletionResponse> => {
   const response = await fetch(apiProxyUrl, {
     method: "POST",
@@ -86,7 +88,74 @@ const defaultSendChat = async (
     throw new Error(`API error: ${response.status}`);
   }
 
-  return response.json();
+  // Non-streaming: return JSON directly
+  if (!payload.stream) {
+    return response.json();
+  }
+
+  // Streaming: parse SSE
+  if (!response.body) {
+    throw new Error("Response body is empty");
+  }
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+
+  let buffer = "";
+  let fullContent = "";
+  let toolCalls = undefined;
+
+  try {
+    while (true) {
+      if (signal.aborted) break;
+
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+
+      // Process complete SSE messages (ending with \n\n)
+      const parts = buffer.split("\n\n");
+      buffer = parts.pop() || ""; // Keep incomplete part in buffer
+
+      for (const part of parts) {
+        const line = part.split("\n").find((l) => l.startsWith("data:"));
+        if (!line) continue;
+
+        const data = line.slice(5).trim();
+        if (data === "[DONE]") continue;
+
+        try {
+          const json = JSON.parse(data);
+          const delta = json?.choices?.[0]?.delta;
+
+          if (delta?.content) {
+            fullContent += delta.content;
+            onChunk?.(delta.content);
+          }
+
+          if (delta?.tool_calls) {
+            toolCalls = delta.tool_calls;
+          }
+        } catch {
+          // Skip malformed JSON
+        }
+      }
+    }
+  } finally {
+    reader.cancel().catch(() => {});
+  }
+
+  return {
+    choices: [
+      {
+        message: {
+          content: fullContent || null,
+          tool_calls: toolCalls,
+        },
+      },
+    ],
+  };
 };
 
 export function useToolExecutor(
@@ -107,15 +176,27 @@ export function useToolExecutor(
   const [isExecuting, setIsExecuting] = useState(false);
   const [error, setError] = useState<Error | null>(null);
   const abortRef = useRef<AbortController | null>(null);
-  const messagesRef = useRef<ChatMessage[]>([]);
+  const conversationRef = useRef<ChatMessage[]>([]);
 
-  // Keep ref in sync
-  messagesRef.current = messages;
+  const applyMessages = useCallback(
+    (
+      updater: ChatMessage[] | ((prev: ChatMessage[]) => ChatMessage[])
+    ) => {
+      conversationRef.current =
+        typeof updater === "function"
+          ? (updater as (prev: ChatMessage[]) => ChatMessage[])(conversationRef.current)
+          : updater;
+      setMessages(conversationRef.current);
+    },
+    []
+  );
 
   const execute = useCallback(
     async (prompt: string, context?: ExecuteContext) => {
-      setIsExecuting(true);
-      setError(null);
+      flushSync(() => {
+        setIsExecuting(true);
+        setError(null);
+      });
 
       abortRef.current?.abort();
       abortRef.current = new AbortController();
@@ -128,18 +209,11 @@ export function useToolExecutor(
         displayContent: context?.displayContent ?? null,
       };
 
-      setMessages((m) => [...m, userMsg]);
-      messagesRef.current = [...messagesRef.current, userMsg];
+      applyMessages((prev) => [...prev, userMsg]);
 
-      let currentMessages = [...messagesRef.current];
       let turnCount = 0;
 
       try {
-        const transport = sendChat
-          ? sendChat
-          : (body: ChatCompletionPayload, signal: AbortSignal) =>
-              defaultSendChat(apiProxyUrl, body, signal);
-
         while (turnCount < maxTurns) {
           turnCount++;
 
@@ -159,7 +233,7 @@ export function useToolExecutor(
 
           const payloadMessages: ChatPayloadMessage[] = [
             ...(systemPrompt ? [{ role: "system" as const, content: systemPrompt }] : []),
-            ...currentMessages.map((m): ChatPayloadMessage => {
+            ...conversationRef.current.map((m): ChatPayloadMessage => {
               if (m.role === "tool") {
                 return {
                   role: "tool",
@@ -189,26 +263,61 @@ export function useToolExecutor(
             messages: payloadMessages,
             tools: toolsPayload,
             tool_choice: "auto",
-            stream: false,
+            stream: true,
           };
 
-          const result = await transport(payload, abortRef.current.signal);
+          // Create stable assistant ID before streaming
+          const assistantId = crypto.randomUUID();
+
+          // Add empty assistant message placeholder
+          const assistantPlaceholder: ChatMessage = {
+            id: assistantId,
+            role: "assistant",
+            content: "",
+            toolCalls: undefined,
+          };
+
+          applyMessages((prev) => [...prev, assistantPlaceholder]);
+
+          // Streaming callback - uses functional updates
+          const onChunk = (content: string) => {
+            applyMessages((prev) =>
+              prev.map((msg) =>
+                msg.id === assistantId
+                  ? { ...msg, content: (msg.content || "") + content }
+                  : msg
+              )
+            );
+          };
+
+          // Execute streaming request
+          const result = sendChat
+            ? await sendChat(payload, abortRef.current.signal)
+            : await defaultSendChat(apiProxyUrl, payload, abortRef.current.signal, onChunk);
+
           const choice = result.choices?.[0];
 
           if (!choice) {
             throw new Error("No response from model");
           }
 
-          const assistantMsg: ChatMessage = {
-            id: crypto.randomUUID(),
-            role: "assistant",
-            content: choice.message?.content ?? "",
-            toolCalls: choice.message?.tool_calls,
-          };
+          // Update conversation state and final message with tool calls
+          const finalContent = choice.message?.content ?? "";
+          const finalToolCalls = choice.message?.tool_calls;
 
-          currentMessages.push(assistantMsg);
-          setMessages([...currentMessages]);
-          messagesRef.current = currentMessages;
+          const hasFinalContent = typeof finalContent === "string" && finalContent.trim().length > 0;
+
+          applyMessages((prev) =>
+            prev.map((msg) =>
+              msg.id === assistantId
+                ? {
+                    ...msg,
+                    content: hasFinalContent ? finalContent : msg.content ?? "",
+                    toolCalls: finalToolCalls,
+                  }
+                : msg
+            )
+          );
 
           const toolCalls = choice.message?.tool_calls;
 
@@ -265,9 +374,7 @@ export function useToolExecutor(
                 toolCallId,
               };
 
-              currentMessages.push(toolMsg);
-              setMessages([...currentMessages]);
-              messagesRef.current = currentMessages;
+              applyMessages((prev) => [...prev, toolMsg]);
             }
 
             continue;
@@ -284,19 +391,21 @@ export function useToolExecutor(
         const errorObj = err instanceof Error ? err : new Error(String(err));
         setError(errorObj);
       } finally {
-        setIsExecuting(false);
+        flushSync(() => {
+          setIsExecuting(false);
+        });
       }
     },
-    [tools, model, apiProxyUrl, systemPrompt, maxTurns, toolTimeout, onToolCall, sendChat]
+    [tools, model, apiProxyUrl, systemPrompt, maxTurns, toolTimeout, onToolCall, sendChat, applyMessages]
   );
 
   const reset = useCallback(() => {
-    setMessages([]);
-    messagesRef.current = [];
+    conversationRef.current = [];
+    applyMessages([]);
     setError(null);
     setIsExecuting(false);
     abortRef.current?.abort();
-  }, []);
+  }, [applyMessages]);
 
   return {
     messages,

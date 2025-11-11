@@ -5,7 +5,7 @@ const dateTimeSchema = z.object({});
 
 export const dateTimeTool: ToolDefinition = {
   name: "get_date",
-  description: "Get the current date and time",
+  description: "Get the current date and time. ONLY use this when the user asks for the current date, time, or timestamp. Do NOT use for document-related queries.",
   schema: dateTimeSchema,
   parameters: {
     type: "object",

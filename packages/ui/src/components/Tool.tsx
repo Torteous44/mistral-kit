@@ -1,5 +1,6 @@
 import * as React from "react";
 import * as Collapsible from "@radix-ui/react-collapsible";
+import { ChevronRight } from "lucide-react";
 
 export type ToolState =
   | "pending"          // Tool call initiated, waiting to execute
@@ -75,6 +76,14 @@ export function ToolHeader({
     error: "Error",
   }[state];
 
+  // State indicator dot colors
+  const stateDotColor = {
+    pending: "bg-neutral-400",
+    running: "bg-[#fa520f]",
+    completed: "bg-emerald-500",
+    error: "bg-red-500",
+  }[state];
+
   return (
     <div className={className} data-state={state}>
       <Collapsible.Trigger asChild>
@@ -84,10 +93,18 @@ export function ToolHeader({
           data-open={open}
           data-state={state}
         >
-          <span className={nameClassName}>{toolName}</span>
-          <span className={badgeClassName} data-state={state}>
-            {stateLabel}
-          </span>
+          <div className="flex items-center gap-3 flex-1">
+            <ChevronRight
+              className={`h-4 w-4 text-neutral-400 transition-transform duration-200 ${open ? 'rotate-90' : ''}`}
+            />
+            <span className={nameClassName}>{toolName}</span>
+            <div className="flex items-center gap-1.5">
+              <div className={`h-1.5 w-1.5 rounded-full ${stateDotColor} ${state === 'running' ? 'animate-pulse' : ''}`} />
+              <span className={badgeClassName} data-state={state}>
+                {stateLabel}
+              </span>
+            </div>
+          </div>
           {children}
         </button>
       </Collapsible.Trigger>

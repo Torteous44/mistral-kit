@@ -69,13 +69,13 @@ export function CodeBlock({
             customStyle: {
               margin: 0,
               padding: "1.25rem",
-              fontSize: "0.9rem",
+              fontSize: "0.8rem",
               backgroundColor: "transparent",
             },
             codeTagProps: {
               style: {
                 fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace",
-                fontSize: "0.9rem",
+                fontSize: "0.75rem",
               },
             },
             PreTag: "div",
@@ -139,9 +139,9 @@ export function CodeBlockCopyButton({
   };
 
   const resolvedCopyIcon =
-    copyIcon ?? React.createElement(CopyIcon, { className: "h-4 w-4", "aria-hidden": true });
+    copyIcon ?? React.createElement(CopyIcon, { className: "h-4 w-2", "aria-hidden": true });
   const resolvedCopiedIcon =
-    copiedIcon ?? React.createElement(CheckIcon, { className: "h-4 w-4", "aria-hidden": true });
+    copiedIcon ?? React.createElement(CheckIcon, { className: "h-4 w-2", "aria-hidden": true });
 
   return (
     <button

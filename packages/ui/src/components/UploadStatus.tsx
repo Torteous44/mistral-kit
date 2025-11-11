@@ -19,7 +19,7 @@ export type UploadStatusProps = {
 
 const baseStructureClass = "flex flex-col gap-1 rounded-2xl border px-3 py-2 text-sm";
 const toneClass = {
-  default: "border-mistral-black/10 bg-white text-mistral-black",
+  default: "border-neutral-200 bg-white text-[#101010]",
   error: "border-red-400/40 bg-red-50 text-red-700",
 };
 

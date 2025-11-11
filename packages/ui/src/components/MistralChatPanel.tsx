@@ -79,6 +79,7 @@ export type MistralChatPanelProps = {
   showUploadStatus?: boolean;
   classNames?: MistralChatPanelClassNames;
   unstyled?: boolean;
+  animateAssistantResponses?: boolean;
 };
 
 const mergeClassNames = (...classes: Array<string | undefined | null>) =>
@@ -117,6 +118,7 @@ export function MistralChatPanel({
   showUploadStatus = true,
   classNames,
   unstyled = false,
+  animateAssistantResponses = false,
 }: MistralChatPanelProps) {
   const [draft, setDraft] = useState("");
   const scrollRef = useRef<HTMLDivElement | null>(null);
@@ -198,27 +200,27 @@ export function MistralChatPanel({
   const messageListBaseClass = applyClass("space-y-4", classNames?.messageList, unstyled);
   const messageListClass = mergeClassNames(messageListBaseClass, messageListClassNameProp);
   const promptClass = applyClass(
-    "rounded-3xl border border-mistral-black/15 bg-white px-2 py-2",
+    "rounded-3xl border border-neutral-200 bg-white px-2 py-2",
     classNames?.prompt,
     unstyled
   );
   const attachmentPreviewClass = applyClass(
-    "mb-3 w-fit items-center gap-3 rounded-2xl border border-mistral-black/20 bg-mistral-beige/60 px-3 py-2 text-sm text-mistral-black",
+    "mb-3 w-fit items-center gap-3 rounded-2xl border border-neutral-200 bg-zinc-50 px-3 py-2 text-sm text-[#101010]",
     classNames?.attachmentPreview,
     unstyled
   );
   const textareaClass = applyClass(
-    "h-auto w-full resize-none rounded-3xl bg-transparent px-4 py-3 text-sm text-mistral-black focus:outline-none",
+    "h-auto w-full resize-none rounded-3xl bg-transparent px-4 py-3 text-sm text-[#101010] placeholder:text-neutral-500 focus:outline-none",
     classNames?.textarea,
     unstyled
   );
   const uploadButtonClass = applyClass(
-    "flex h-10 w-10 items-center justify-center rounded-full border border-mistral-black/30 bg-white text-mistral-black transition-colors hover:border-mistral-orange hover:text-mistral-orange disabled:opacity-40",
+    "flex h-10 w-10 items-center justify-center rounded-full border border-neutral-200 bg-white text-neutral-700 transition-all hover:border-[#fa520f] hover:text-[#fa520f] disabled:opacity-40 disabled:cursor-not-allowed",
     classNames?.uploadButton,
     unstyled
   );
   const submitButtonClass = applyClass(
-    "flex items-center justify-center rounded-full bg-mistral-black px-5 py-2 text-sm font-semibold text-mistral-beige transition-colors hover:bg-mistral-orange disabled:opacity-40",
+    "flex h-10 w-10 items-center justify-center rounded-full bg-[#101010] text-white transition-all hover:bg-[#fa520f] disabled:opacity-40 disabled:cursor-not-allowed",
     classNames?.submitButton,
     unstyled
   );
@@ -308,7 +310,9 @@ export function MistralChatPanel({
     (message: ChatMessage) => (
       <ChatMessageBubble
         message={message}
-        animateAssistant={message.role === "assistant" && message.id === lastAssistantMessageId}
+        animateAssistant={
+          animateAssistantResponses && message.role === "assistant" && message.id === lastAssistantMessageId
+        }
         markdownComponents={markdownComponents}
         className={messageWrapperClass}
         userBubbleClassName={userBubbleClassNameValue}
@@ -319,6 +323,7 @@ export function MistralChatPanel({
     [
       attachmentClassNames,
       assistantBubbleClassNameValue,
+      animateAssistantResponses,
       lastAssistantMessageId,
       markdownComponents,
       messageWrapperClass,

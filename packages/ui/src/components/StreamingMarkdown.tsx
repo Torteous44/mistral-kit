@@ -21,7 +21,20 @@ const StreamingMarkdown: React.FC<StreamingMarkdownProps> = ({
   components,
   remarkPlugins,
 }) => {
-  const displayed = useStreamingText(text, { animate });
+  const hasMountedRef = React.useRef(false);
+  const previousTextRef = React.useRef(text);
+
+  React.useEffect(() => {
+    hasMountedRef.current = true;
+  }, []);
+
+  React.useEffect(() => {
+    previousTextRef.current = text;
+  }, [text]);
+
+  const shouldAnimate = animate && hasMountedRef.current && previousTextRef.current !== text;
+
+  const displayed = useStreamingText(text, { animate: shouldAnimate });
 
   return (
     <div className={className}>

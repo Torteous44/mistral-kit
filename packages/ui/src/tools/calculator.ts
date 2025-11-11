@@ -13,7 +13,7 @@ type CalculatorArgs = z.infer<typeof calculatorSchema>;
 
 export const calculatorTool: ToolDefinition = {
   name: "calculator",
-  description: "Perform mathematical calculations (add, subtract, multiply, divide, percentage)",
+  description: "Perform mathematical calculations (add, subtract, multiply, divide, percentage). ONLY use this for math operations with numbers. Do NOT use for document analysis or text-based queries.",
   schema: calculatorSchema,
   parameters: {
     type: "object",

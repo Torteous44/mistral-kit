@@ -78,7 +78,7 @@ export function createWeatherTool(options: { apiProxyUrl?: string } = {}): ToolD
 
   return {
     name: "get_weather",
-    description: "Get current weather information for a specific location",
+    description: "Get current weather information for a specific city or location. ONLY use this for weather-related questions (temperature, conditions, humidity). Do NOT use for document analysis or any non-weather queries.",
     schema: weatherSchema,
     parameters: {
       type: "object",

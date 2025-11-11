@@ -12,7 +12,7 @@ export type ChatStatusProps = {
 };
 
 const variantClasses: Record<Variant, string> = {
-  info: "border-mistral-black/10 bg-white text-mistral-black",
+  info: "border-neutral-200 bg-white text-[#101010]",
   warning: "border-yellow-400/40 bg-yellow-50 text-yellow-800",
   error: "border-red-500/40 bg-red-50 text-red-700",
 };

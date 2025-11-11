@@ -58,8 +58,8 @@ export function ChatMessageBubble({
   markdownComponents,
   remarkPlugins = defaultRemarkPlugins,
   className = "",
-  userBubbleClassName = "max-w-[75%] rounded-3xl bg-mistral-black px-4 py-3 text-sm text-mistral-beige",
-  assistantBubbleClassName = "max-w-[75%] rounded-3xl border border-mistral-black/15 bg-white px-4 py-3 text-sm text-mistral-black",
+  userBubbleClassName = "max-w-[75%] rounded-3xl bg-[#101010] px-4 py-3 text-sm text-white",
+  assistantBubbleClassName = "max-w-[75%] rounded-3xl border border-neutral-200 bg-white px-4 py-3 text-sm text-[#101010]",
   attachmentClassNames,
 }: ChatMessageBubbleProps) {
   if (message.role === "tool") {
@@ -78,16 +78,16 @@ export function ChatMessageBubble({
             toolName={message.toolName ?? "tool"}
             state="completed"
             className="w-full"
-            triggerClassName="w-full flex items-center justify-between gap-3 rounded-xl border border-mistral-black/15 bg-white px-4 py-3 text-left transition-colors hover:bg-mistral-beige/30"
-            nameClassName="text-sm font-medium text-mistral-black"
-            badgeClassName="rounded-full bg-green-100 px-2 py-1 text-xs font-semibold uppercase tracking-wider text-green-700"
+            triggerClassName="w-full rounded-xl border border-neutral-200 bg-white px-4 py-3 text-left transition-colors hover:bg-zinc-50 cursor-pointer"
+            nameClassName="text-sm font-medium text-[#101010]"
+            badgeClassName="text-xs text-neutral-600"
           />
           <ToolContent className="mt-2">
             <ToolOutput
               output={parsedResult}
-              className="rounded-xl border border-mistral-black/15 bg-white px-4 py-3"
-              labelClassName="mb-2 text-xs font-semibold uppercase tracking-wider text-mistral-black/60"
-              contentClassName="overflow-x-auto rounded-lg bg-mistral-black/5 p-3 text-xs text-mistral-black"
+              className="rounded-xl border border-neutral-200 bg-white px-4 py-3"
+              labelClassName="mb-2 text-xs font-medium text-neutral-500"
+              contentClassName="overflow-x-auto rounded-lg bg-zinc-50 p-3 text-xs text-[#101010] font-mono"
             />
           </ToolContent>
         </Tool>
@@ -112,16 +112,16 @@ export function ChatMessageBubble({
                 toolName={call.function?.name ?? "tool"}
                 state="running"
                 className="w-full"
-                triggerClassName="w-full flex items-center justify-between gap-3 rounded-xl border border-mistral-black/15 bg-white px-4 py-3 text-left transition-colors hover:bg-mistral-beige/30"
-                nameClassName="text-sm font-medium text-mistral-black"
-                badgeClassName="rounded-full bg-yellow-100 px-2 py-1 text-xs font-semibold uppercase tracking-wider text-yellow-700 animate-pulse"
+                triggerClassName="w-full rounded-xl border border-neutral-200 bg-white px-4 py-3 text-left transition-colors hover:bg-zinc-50 cursor-pointer"
+                nameClassName="text-sm font-medium text-[#101010]"
+                badgeClassName="text-xs text-[#fa520f]"
               />
               <ToolContent className="mt-2">
                 <ToolInput
                   input={parsedArgs}
-                  className="rounded-xl border border-mistral-black/15 bg-white px-4 py-3"
-                  labelClassName="mb-2 text-xs font-semibold uppercase tracking-wider text-mistral-black/60"
-                  contentClassName="overflow-x-auto rounded-lg bg-mistral-black/5 p-3 text-xs text-mistral-black"
+                  className="rounded-xl border border-neutral-200 bg-white px-4 py-3"
+                  labelClassName="mb-2 text-xs font-medium text-neutral-500"
+                  contentClassName="overflow-x-auto rounded-lg bg-zinc-50 p-3 text-xs text-[#101010] font-mono"
                 />
               </ToolContent>
             </Tool>
@@ -135,6 +135,9 @@ export function ChatMessageBubble({
   const attachments = message.attachments ?? [];
   const hasAttachments = attachments.length > 0;
   const displayContent = message.displayContent ?? message.content ?? "";
+  const assistantHasContent =
+    message.role === "assistant" && typeof message.content === "string" && message.content.trim().length > 0;
+  const shouldShowAssistantPlaceholder = message.role === "assistant" && !assistantHasContent && animateAssistant;
 
   return (
     <div className={`${className} ${isUser ? "flex justify-end" : "flex justify-start"}`}>
@@ -142,9 +145,9 @@ export function ChatMessageBubble({
         {hasAttachments &&
           attachments.map((attachment) => {
             const baseUserAttachment =
-              "mb-3 rounded-2xl border border-white/30 bg-white/10 px-3 py-2 text-xs text-mistral-beige last:mb-3";
+              "mb-3 rounded-2xl border border-white/30 bg-white/10 px-3 py-2 text-xs text-white last:mb-3";
             const baseAssistantAttachment =
-              "mb-3 rounded-2xl border border-mistral-black/10 bg-mistral-beige/40 px-3 py-2 text-xs text-mistral-black last:mb-3";
+              "mb-3 rounded-2xl border border-neutral-200 bg-zinc-50 px-3 py-2 text-xs text-[#101010] last:mb-3";
             const containerClass = isUser
               ? attachmentClassNames?.userContainer ?? baseUserAttachment
               : attachmentClassNames?.assistantContainer ?? baseAssistantAttachment;
@@ -169,12 +172,16 @@ export function ChatMessageBubble({
           })}
 
         {message.role === "assistant" ? (
-          <StreamingMarkdown
-            text={message.content ?? ""}
-            animate={animateAssistant}
-            components={markdownComponents}
-            remarkPlugins={remarkPlugins}
-          />
+          assistantHasContent ? (
+            <StreamingMarkdown
+              text={message.content ?? ""}
+              animate={animateAssistant}
+              components={markdownComponents}
+              remarkPlugins={remarkPlugins}
+            />
+          ) : shouldShowAssistantPlaceholder ? (
+            <span className="text-xs uppercase tracking-[0.3em] opacity-60">Thinking…</span>
+          ) : null
         ) : displayContent ? (
           <div className="prose prose-sm max-w-none text-current">
             <ReactMarkdown components={markdownComponents} remarkPlugins={remarkPlugins}>

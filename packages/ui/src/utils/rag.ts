@@ -46,11 +46,11 @@ export function createSemanticSearchTool(
 
   return {
     name: "search_docs",
-    description: "Search the uploaded knowledge. Use for both specific queries and general questions like 'summarize this' or 'what is this about'.",
+    description: "Search and analyze uploaded documents. ALWAYS use this tool for ANY questions about uploaded files, including: document summaries, content analysis, finding specific information, or answering questions based on the document. This is the ONLY tool that can access uploaded document content.",
     parameters: {
       type: "object",
       properties: {
-        query: { type: "string", description: "Search request or question about the document" },
+        query: { type: "string", description: "The user's question or request about the document (e.g., 'summarize this', 'what is this about?', 'find information about X')" },
         limit: { type: "number", description: "Number of matches to return", default: 3 },
       },
       required: ["query"],
