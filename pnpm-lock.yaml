@@ -10,7 +10,7 @@ importers:
 
   apps/site:
     dependencies:
-      '@mistral/ui':
+      '@matthewporteous/mistral-kit':
         specifier: workspace:^
         version: link:../../packages/ui
       '@next/mdx':

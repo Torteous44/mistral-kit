@@ -7,27 +7,27 @@ const ROUTES = [
   {
     name: "Chat proxy",
     slug: "mistral",
-    importPath: "@mistral/ui/next/api/chat",
+    importPath: "@matthewporteous/mistral-kit/next/api/chat",
     runtime: "edge",
     dynamic: "force-dynamic",
   },
   {
     name: "Embeddings proxy",
     slug: "embeddings",
-    importPath: "@mistral/ui/next/api/embeddings",
+    importPath: "@matthewporteous/mistral-kit/next/api/embeddings",
     runtime: "edge",
   },
   {
     name: "Upload text",
     slug: "upload-text",
-    importPath: "@mistral/ui/next/api/upload-text",
+    importPath: "@matthewporteous/mistral-kit/next/api/upload-text",
     runtime: "nodejs",
     dynamic: "force-dynamic",
   },
   {
     name: "Weather proxy",
     slug: "weather",
-    importPath: "@mistral/ui/next/api/weather",
+    importPath: "@matthewporteous/mistral-kit/next/api/weather",
     runtime: "edge",
     dynamic: "force-dynamic",
   },
@@ -37,7 +37,7 @@ function printHelp() {
   console.log(`mistral-kit <command>
 
 Commands:
-  init            Scaffold Next.js API routes for @mistral/ui
+  init            Scaffold Next.js API routes for @matthewporteous/mistral-kit
 
 Options:
   --dir <path>        Root directory of your Next.js app (default: .)

@@ -8,10 +8,10 @@
     "jsx": "react-jsx",
     "baseUrl": ".",
     "paths": {
-      "@mistral/ui": ["packages/ui/src"],
-      "@mistral/ui/*": ["packages/ui/src/*"],
-      "@mistral/ui/server": ["packages/ui/src/server"],
-      "@mistral/ui/next/api/*": ["packages/ui/src/next/api/*"]
+      "@matthewporteous/mistral-kit": ["packages/ui/src"],
+      "@matthewporteous/mistral-kit/*": ["packages/ui/src/*"],
+      "@matthewporteous/mistral-kit/server": ["packages/ui/src/server"],
+      "@matthewporteous/mistral-kit/next/api/*": ["packages/ui/src/next/api/*"]
     },
     "types": ["node"]
   }

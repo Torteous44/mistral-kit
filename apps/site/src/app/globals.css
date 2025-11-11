@@ -1,6 +1,6 @@
 @import "tailwindcss";
 @source "../../../../packages/ui/src/**/*.{ts,tsx,js,jsx}";
-@source "../../node_modules/@mistral/ui/dist/**/*.{ts,tsx,js,jsx}";
+@source "../../node_modules/@matthewporteous/mistral-kit/dist/**/*.{ts,tsx,js,jsx}";
 
 
 :root {

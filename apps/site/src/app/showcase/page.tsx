@@ -9,7 +9,7 @@ import {
   calculatorTool,
   dateTimeTool,
   type MistralChatPanelClassNames,
-} from "@mistral/ui";
+} from "@matthewporteous/mistral-kit";
 
 const weatherTool = createWeatherTool({ apiProxyUrl: "/api/weather" });
 const BASE_TOOLS = [weatherTool, calculatorTool, dateTimeTool] as const;

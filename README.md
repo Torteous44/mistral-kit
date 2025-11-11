@@ -47,7 +47,7 @@ mistral-kit/
 │       └── package.json
 │
 └── packages/
-    └── ui/                     -> @mistral/ui library
+    └── ui/                     -> @matthewporteous/mistral-kit library
         ├── src/
         │   ├── components/     -> React UI primitives
         │   ├── hooks/          -> Headless AI hooks
@@ -236,9 +236,9 @@ pnpm -C apps/site dev
 
 ### Plug-and-Play Setup for Consumers
 
-If you're installing `@mistral/ui` inside your own Next.js app, you only need three steps:
+If you're installing `@matthewporteous/mistral-kit` inside your own Next.js app, you only need three steps:
 
-1. `pnpm install @mistral/ui`
+1. `pnpm install @matthewporteous/mistral-kit`
 2. Add `MISTRAL_API_KEY=<your-key>` to your environment
 3. Run the scaffolder (recommended):  
    ```bash
@@ -256,24 +256,24 @@ If you're installing `@mistral/ui` inside your own Next.js app, you only need th
 
 ```ts
 // app/api/mistral/route.ts
-import { POST as chatHandler } from "@mistral/ui/next/api/chat";
+import { POST as chatHandler } from "@matthewporteous/mistral-kit/next/api/chat";
 export const runtime = "edge";
 export const dynamic = "force-dynamic";
 export const POST = chatHandler;
 
 // app/api/embeddings/route.ts (optional, for semantic search)
-import { POST as embeddingsHandler } from "@mistral/ui/next/api/embeddings";
+import { POST as embeddingsHandler } from "@matthewporteous/mistral-kit/next/api/embeddings";
 export const runtime = "edge";
 export const POST = embeddingsHandler;
 
 // app/api/upload-text/route.ts (optional, for attachments)
-import { POST as uploadHandler } from "@mistral/ui/next/api/upload-text";
+import { POST as uploadHandler } from "@matthewporteous/mistral-kit/next/api/upload-text";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const POST = uploadHandler;
 
 // app/api/weather/route.ts (optional, for built-in weather tool)
-import { POST as weatherHandler } from "@mistral/ui/next/api/weather";
+import { POST as weatherHandler } from "@matthewporteous/mistral-kit/next/api/weather";
 export const runtime = "edge";
 export const dynamic = "force-dynamic";
 export const POST = weatherHandler;
@@ -282,7 +282,7 @@ export const POST = weatherHandler;
 With the server routes in place, you can drop the chat UI anywhere:
 
 ```tsx
-import { MistralChatPanel } from "@mistral/ui";
+import { MistralChatPanel } from "@matthewporteous/mistral-kit";
 
 export default function Demo() {
   return <MistralChatPanel apiProxyUrl="/api/mistral" />;
