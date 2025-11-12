@@ -4,8 +4,6 @@ import type { SVGProps } from "react";
 
 import { Github } from "lucide-react";
 import Link from "next/link";
-import SyntaxHighlighter from "react-syntax-highlighter";
-import { oneLight } from "react-syntax-highlighter/dist/cjs/styles/prism";
 import {
   MistralChat,
   createWeatherTool,
@@ -76,7 +74,7 @@ const steps = [
 
 export default function Home() {
   return (
-    <div className="min-h-screen bg-white text-mistral-black">
+    <div className="min-h-screen bg-white text-mistral-black selection:bg-mistral-orange selection:text-white">
       <main className="mx-auto max-w-4xl px-6 py-12">
         {/* Hero */}
         <section className="space-y-8 py-16">
@@ -138,23 +136,12 @@ export default function Home() {
                   <span className="text-xs font-medium text-mistral-orange tabular-nums">{index + 1}</span>
                   <h3 className="text-sm font-medium">{step.label}</h3>
                 </div>
-                <div className="overflow-x-auto rounded border border-mistral-black/10">
-                  <SyntaxHighlighter
-                    language={step.language}
-                    style={oneLight}
-                    customStyle={{
-                      margin: 0,
-                      padding: "1rem",
-                      fontSize: "0.75rem",
-                      background: "#fafafa",
-                      lineHeight: "1.6",
-                    }}
-                    codeTagProps={{
-                      style: { fontFamily: "ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" },
-                    }}
-                  >
-                    {step.code}
-                  </SyntaxHighlighter>
+                <div className="overflow-x-auto rounded border border-mistral-black/10 bg-[#fafafa]">
+                  <pre className="m-0 p-4 text-xs leading-relaxed">
+                    <code className="font-mono text-mistral-black">
+                      {step.code}
+                    </code>
+                  </pre>
                 </div>
                 <p className="text-xs text-mistral-black/60 leading-relaxed">{step.body}</p>
               </li>
@@ -178,7 +165,10 @@ export default function Home() {
                 <h3 className="text-sm font-medium">Default</h3>
                 <p className="text-xs text-mistral-black/60">Out of the box—no custom styling</p>
               </div>
-              <div className="h-[500px] rounded-lg border border-mistral-black/10 overflow-hidden flex">
+              <div className="relative h-[500px] rounded-lg border border-mistral-black/10 overflow-hidden flex">
+                <div className="absolute -right-10 top-8 z-10 w-40 rotate-45 bg-mistral-orange py-1 text-center text-[9px] font-bold uppercase tracking-wider text-white">
+                  Try me
+                </div>
                 <MistralChat
                   apiProxyUrl="/api/mistral"
                   embeddingsOptions={{ apiProxyUrl: "/api/embeddings" }}
@@ -199,7 +189,10 @@ export default function Home() {
                 <h3 className="text-sm font-medium">Minimal</h3>
                 <p className="text-xs text-mistral-black/60">Clean lines, subtle borders, maximum breathing room</p>
               </div>
-              <div className="h-[500px] rounded-lg border border-mistral-black/5 overflow-hidden bg-white flex">
+              <div className="relative h-[500px] rounded-lg border border-mistral-black/5 overflow-hidden bg-white flex">
+                <div className="absolute -right-10 top-8 z-10 w-40 rotate-45 bg-mistral-orange py-1 text-center text-[9px] font-bold uppercase tracking-wider text-white">
+                  Try me
+                </div>
                 <MistralChat
                   apiProxyUrl="/api/mistral"
                   baseTools={baseTools}
@@ -226,7 +219,10 @@ export default function Home() {
                 <h3 className="text-sm font-medium">Bold</h3>
                 <p className="text-xs text-mistral-black/60">High contrast, thick borders, strong shadows—with custom tool styling</p>
               </div>
-              <div className="h-[500px] rounded-lg overflow-hidden flex">
+              <div className="relative h-[500px] rounded-lg overflow-hidden flex">
+                <div className="absolute -right-10 top-8 z-10 w-40 rotate-45 bg-mistral-orange py-1 text-center text-[9px] font-bold uppercase tracking-wider text-white">
+                  Try me
+                </div>
                 <MistralChat
                   apiProxyUrl="/api/mistral"
                   baseTools={baseTools}
@@ -258,7 +254,10 @@ export default function Home() {
                 <h3 className="text-sm font-medium">Dark</h3>
                 <p className="text-xs text-mistral-black/60">Terminal aesthetic with cyan accents and fade effect</p>
               </div>
-              <div className="h-[500px] rounded-lg overflow-hidden bg-[#0a0a0a] flex">
+              <div className="relative h-[500px] rounded-lg overflow-hidden bg-[#0a0a0a] flex">
+                <div className="absolute -right-10 top-8 z-10 w-40 rotate-45 bg-mistral-orange py-1 text-center text-[9px] font-bold uppercase tracking-wider text-white">
+                  Try me
+                </div>
                 <MistralChat
                   apiProxyUrl="/api/mistral"
                   baseTools={baseTools}
@@ -291,7 +290,10 @@ export default function Home() {
                 <h3 className="text-sm font-medium">Soft</h3>
                 <p className="text-xs text-mistral-black/60">Gentle gradients and rounded corners</p>
               </div>
-              <div className="h-[500px] rounded-2xl overflow-hidden flex">
+              <div className="relative h-[500px] rounded-2xl overflow-hidden flex">
+                <div className="absolute -right-10 top-8 z-10 w-40 rotate-45 bg-mistral-orange py-1 text-center text-[9px] font-bold uppercase tracking-wider text-white">
+                  Try me
+                </div>
                 <MistralChat
                   apiProxyUrl="/api/mistral"
                   baseTools={baseTools}
@@ -319,7 +321,10 @@ export default function Home() {
                 <h3 className="text-sm font-medium">Compact</h3>
                 <p className="text-xs text-mistral-black/60">Dense layout for sidebar or widget use</p>
               </div>
-              <div className="h-[500px] rounded-lg overflow-hidden bg-gray-50 flex">
+              <div className="relative h-[500px] rounded-lg overflow-hidden bg-gray-50 flex">
+                <div className="absolute -right-10 top-8 z-10 w-40 rotate-45 bg-mistral-orange py-1 text-center text-[9px] font-bold uppercase tracking-wider text-white">
+                  Try me
+                </div>
                 <MistralChat
                   apiProxyUrl="/api/mistral"
                   baseTools={baseTools}
