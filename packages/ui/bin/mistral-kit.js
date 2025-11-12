@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { mkdirSync, existsSync, writeFileSync } from "node:fs";
+import { mkdirSync, existsSync, writeFileSync, readFileSync } from "node:fs";
 import { dirname, join, relative, resolve } from "node:path";
 import process from "node:process";
 
@@ -32,6 +32,7 @@ const ROUTES = [
     dynamic: "force-dynamic",
   },
 ];
+
 
 function printHelp() {
   console.log(`mistral-kit <command>
@@ -133,6 +134,8 @@ function runInit(options) {
     results.push({ path: displayPath, status: "written" });
   });
 
+  const cssUpdate = ensureGlobalCssSources(appDir, baseDir, cwd);
+
   console.log(`\nScaffolded API routes in ${relative(cwd, appDir) || "."}\n`);
   results.forEach((result) => {
     if (result.status === "written") {
@@ -142,9 +145,115 @@ function runInit(options) {
     }
   });
 
+  if (cssUpdate.status === "written") {
+    console.log(`\n  ✓ Added Tailwind @source directives to ${cssUpdate.path}`);
+  } else if (cssUpdate.status === "skipped") {
+    console.log(
+      `\n  • Skipped Tailwind @source directives (missing ${cssUpdate.path})`
+    );
+  } else if (cssUpdate.status === "unchanged") {
+    console.log(`\n  • Tailwind @source directives already configured`);
+  }
+
   console.log(
     "\nSet MISTRAL_API_KEY in your environment and point your UI components at /api/mistral."
   );
+}
+
+function ensureGlobalCssSources(appDir, baseDir, cwd) {
+  const globalsPath = join(appDir, "globals.css");
+  const displayPath = relative(cwd, globalsPath);
+  if (!existsSync(globalsPath)) {
+    return { status: "skipped", path: displayPath };
+  }
+
+  const original = readFileSync(globalsPath, "utf8");
+  const normalized = original.replace(/\r\n/g, "\n");
+  const directives = buildSourceDirectives(globalsPath, baseDir, cwd);
+  if (directives.length === 0) {
+    return { status: "unchanged", path: displayPath };
+  }
+
+  const lines = normalized.split("\n");
+  const filteredLines = lines.filter(
+    (line) => !isScaffoldedSourceLine(line)
+  );
+  const rest = filteredLines.join("\n").replace(/^\n+/, "");
+  const block = directives.join("\n");
+  let nextContent = rest ? `${block}\n\n${rest}` : `${block}`;
+  if (!nextContent.endsWith("\n")) {
+    nextContent += "\n";
+  }
+
+  if (normalized === nextContent) {
+    return { status: "unchanged", path: displayPath };
+  }
+
+  writeFileSync(globalsPath, nextContent, "utf8");
+  return { status: "written", path: displayPath };
+}
+
+function isScaffoldedSourceLine(line) {
+  const trimmed = line.trim();
+  if (!trimmed.startsWith("@source")) return false;
+  return (
+    trimmed.includes("@matthewporteous/mistral-kit") ||
+    trimmed.includes("packages/ui/src")
+  );
+}
+
+function buildSourceDirectives(globalsPath, baseDir, cwd) {
+  const cssDir = dirname(globalsPath);
+  const directives = [];
+
+  const workspaceSrc = findWorkspaceSourceDir(baseDir, cwd);
+  if (workspaceSrc) {
+    directives.push(
+      buildSourceDirective(cssDir, workspaceSrc, "**/*.{ts,tsx,js,jsx}")
+    );
+  }
+
+  const distDir = join(
+    baseDir,
+    "node_modules",
+    "@matthewporteous",
+    "mistral-kit",
+    "dist"
+  );
+  directives.push(buildSourceDirective(cssDir, distDir, "**/*.{ts,tsx,js,jsx}"));
+
+  return directives;
+}
+
+function buildSourceDirective(fromDir, targetDir, glob) {
+  const relPath = normalizeForCss(relative(fromDir, targetDir) || ".");
+  const prefix = relPath.startsWith(".") ? relPath : `./${relPath}`;
+  return `@source "${prefix}/${glob}";`;
+}
+
+function normalizeForCss(pathValue) {
+  return pathValue.split("\\").join("/");
+}
+
+function findWorkspaceSourceDir(baseDir, cwd) {
+  const seen = new Set();
+  const roots = [cwd, baseDir];
+
+  for (const root of roots) {
+    let current = root;
+    while (!seen.has(current)) {
+      seen.add(current);
+      const candidate = resolve(current, "packages/ui/src");
+      if (existsSync(candidate)) {
+        return candidate;
+      }
+      const parent = dirname(current);
+      if (parent === current) break;
+      current = parent;
+    }
+  }
+
+  return null;
 }
 
 function main() {

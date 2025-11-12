@@ -36,6 +36,10 @@ type ChatMessageBubbleProps = {
    * Optional attachment-specific class overrides
    */
   attachmentClassNames?: ChatMessageBubbleAttachmentClassNames;
+  /**
+   * Optional tool-specific class overrides
+   */
+  toolClassNames?: ChatMessageBubbleToolClassNames;
 };
 
 export type ChatMessageBubbleAttachmentClassNames = {
@@ -44,6 +48,21 @@ export type ChatMessageBubbleAttachmentClassNames = {
   badge?: string;
   fileName?: string;
   meta?: string;
+};
+
+export type ChatMessageBubbleToolClassNames = {
+  container?: string;
+  trigger?: string;
+  name?: string;
+  badge?: string;
+  content?: string;
+  inputContainer?: string;
+  inputLabel?: string;
+  inputContent?: string;
+  outputContainer?: string;
+  outputLabel?: string;
+  outputContent?: string;
+  outputError?: string;
 };
 
 const defaultRemarkPlugins = [remarkGfm];
@@ -61,6 +80,7 @@ export function ChatMessageBubble({
   userBubbleClassName = "max-w-[75%] rounded-3xl bg-[#101010] px-4 py-3 text-sm text-white",
   assistantBubbleClassName = "max-w-[75%] rounded-3xl border border-neutral-200 bg-white px-4 py-3 text-sm text-[#101010]",
   attachmentClassNames,
+  toolClassNames,
 }: ChatMessageBubbleProps) {
   if (message.role === "tool") {
     const toolResult = message.content;
@@ -73,21 +93,24 @@ export function ChatMessageBubble({
 
     return (
       <div className={`mx-auto flex max-w-xl ${className}`}>
-        <Tool defaultOpen={false} className="w-full">
+        <Tool
+          defaultOpen={false}
+          className={toolClassNames?.container ?? "w-full"}
+        >
           <ToolHeader
             toolName={message.toolName ?? "tool"}
             state="completed"
             className="w-full"
-            triggerClassName="w-full rounded-xl border border-neutral-200 bg-white px-4 py-3 text-left transition-colors hover:bg-zinc-50 cursor-pointer"
-            nameClassName="text-sm font-medium text-[#101010]"
-            badgeClassName="text-xs text-neutral-600"
+            triggerClassName={toolClassNames?.trigger ?? "w-full rounded-xl border border-neutral-200 bg-white px-4 py-3 text-left transition-colors hover:bg-zinc-50 cursor-pointer"}
+            nameClassName={toolClassNames?.name ?? "text-sm font-medium text-[#101010]"}
+            badgeClassName={toolClassNames?.badge ?? "text-xs text-neutral-600"}
           />
-          <ToolContent className="mt-2">
+          <ToolContent className={toolClassNames?.content ?? "mt-2"}>
             <ToolOutput
               output={parsedResult}
-              className="rounded-xl border border-neutral-200 bg-white px-4 py-3"
-              labelClassName="mb-2 text-xs font-medium text-neutral-500"
-              contentClassName="overflow-x-auto rounded-lg bg-zinc-50 p-3 text-xs text-[#101010] font-mono"
+              className={toolClassNames?.outputContainer ?? "rounded-xl border border-neutral-200 bg-white px-4 py-3"}
+              labelClassName={toolClassNames?.outputLabel ?? "mb-2 text-xs font-medium text-neutral-500"}
+              contentClassName={toolClassNames?.outputContent ?? "overflow-x-auto rounded-lg bg-zinc-50 p-3 text-xs text-[#101010] font-mono"}
             />
           </ToolContent>
         </Tool>
@@ -107,21 +130,25 @@ export function ChatMessageBubble({
           }
 
           return (
-            <Tool key={call.id ?? call.function?.name ?? crypto.randomUUID()} defaultOpen={true}>
+            <Tool
+              key={call.id ?? call.function?.name ?? crypto.randomUUID()}
+              defaultOpen={true}
+              className={toolClassNames?.container}
+            >
               <ToolHeader
                 toolName={call.function?.name ?? "tool"}
                 state="running"
                 className="w-full"
-                triggerClassName="w-full rounded-xl border border-neutral-200 bg-white px-4 py-3 text-left transition-colors hover:bg-zinc-50 cursor-pointer"
-                nameClassName="text-sm font-medium text-[#101010]"
-                badgeClassName="text-xs text-[#fa520f]"
+                triggerClassName={toolClassNames?.trigger ?? "w-full rounded-xl border border-neutral-200 bg-white px-4 py-3 text-left transition-colors hover:bg-zinc-50 cursor-pointer"}
+                nameClassName={toolClassNames?.name ?? "text-sm font-medium text-[#101010]"}
+                badgeClassName={toolClassNames?.badge ?? "text-xs text-[#fa520f]"}
               />
-              <ToolContent className="mt-2">
+              <ToolContent className={toolClassNames?.content ?? "mt-2"}>
                 <ToolInput
                   input={parsedArgs}
-                  className="rounded-xl border border-neutral-200 bg-white px-4 py-3"
-                  labelClassName="mb-2 text-xs font-medium text-neutral-500"
-                  contentClassName="overflow-x-auto rounded-lg bg-zinc-50 p-3 text-xs text-[#101010] font-mono"
+                  className={toolClassNames?.inputContainer ?? "rounded-xl border border-neutral-200 bg-white px-4 py-3"}
+                  labelClassName={toolClassNames?.inputLabel ?? "mb-2 text-xs font-medium text-neutral-500"}
+                  contentClassName={toolClassNames?.inputContent ?? "overflow-x-auto rounded-lg bg-zinc-50 p-3 text-xs text-[#101010] font-mono"}
                 />
               </ToolContent>
             </Tool>

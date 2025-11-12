@@ -12,21 +12,28 @@ Peer dependencies: `react@^18 || ^19` and `react-dom@^18 || ^19`.
 ## Quickstart
 
 ```tsx
-import {
-  MistralChatWindow,
-  calculatorTool,
-  createWeatherTool,
-} from "@matthewporteous/mistral-kit";
+"use client";
+
+import { MistralChat, defaultTools } from "@matthewporteous/mistral-kit";
 
 export default function Demo() {
   return (
-    <MistralChatWindow
-      model="mistral-medium-latest"
-      apiProxyUrl="/api/mistral"
-      systemPrompt="You are a helpful assistant."
-    />
+    <main className="flex min-h-screen flex-col items-center justify-end bg-neutral-100 p-6">
+      <section className="flex w-full max-w-4xl flex-col-reverse space-y-4-reverse mb-8 h-[80vh] overflow-hidden">
+        <MistralChat
+          apiProxyUrl="/api/mistral"
+          embeddingsOptions={{ apiProxyUrl: "/api/embeddings" }}
+          uploadOptions={{ apiUrl: "/api/upload-text", maxFileSizeMB: 4 }}
+          semanticSearchOptions={{ contextChunksForGeneral: 8 }}
+          baseTools={defaultTools}
+          promptPlaceholder="Ask anything..."
+          systemPrompt="You are an expert AI assistant that combines precision, clarity, and initiative. Keep your tone confident, succinct, and helpful. like a world-class analyst who gets straight to the point. No emojis."
+        />
+      </section>
+    </main>
   );
 }
+
 ```
 
 ## API Reference

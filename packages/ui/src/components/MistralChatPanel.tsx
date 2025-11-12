@@ -36,6 +36,8 @@ export type MistralChatClassNames = {
   messageWrapper?: string;
   toolError?: string;
   embeddingsError?: string;
+  promptWrapper?: string;
+  scrollFade?: string;
   prompt?: string;
   attachmentPreview?: string;
   textarea?: string;
@@ -51,6 +53,18 @@ export type MistralChatClassNames = {
   messageAttachmentBadge?: string;
   messageAttachmentFilename?: string;
   messageAttachmentMeta?: string;
+  toolContainer?: string;
+  toolTrigger?: string;
+  toolName?: string;
+  toolBadge?: string;
+  toolContent?: string;
+  toolInputContainer?: string;
+  toolInputLabel?: string;
+  toolInputContent?: string;
+  toolOutputContainer?: string;
+  toolOutputLabel?: string;
+  toolOutputContent?: string;
+  toolOutputError?: string;
 };
 
 export type MistralChatProps = {
@@ -194,7 +208,7 @@ export function MistralChat({
     applyClass("flex h-full flex-col gap-6", classNames?.container, unstyled),
     className
   );
-  const scrollAreaClass = applyClass("flex-1 space-y-6 overflow-y-auto pr-2", classNames?.scrollArea, unstyled);
+  const scrollAreaClass = applyClass("absolute inset-0 space-y-6 overflow-y-auto pr-2", classNames?.scrollArea, unstyled);
   const messageListBaseClass = applyClass("space-y-4", classNames?.messageList, unstyled);
   const messageListClass = mergeClassNames(messageListBaseClass, messageListClassNameProp);
   const promptClass = applyClass(
@@ -240,6 +254,12 @@ export function MistralChat({
   const toolErrorClass = applyClass("w-full", classNames?.toolError, unstyled);
   const embeddingsErrorClass = applyClass("w-full", classNames?.embeddingsError, unstyled);
   const messageWrapperClass = applyClass("", classNames?.messageWrapper, unstyled);
+  const promptWrapperClass = applyClass("flex-shrink-0", classNames?.promptWrapper, unstyled);
+  const scrollFadeClass = applyClass(
+    "pointer-events-none absolute bottom-0 left-0 right-0 h-12",
+    classNames?.scrollFade,
+    unstyled
+  );
   const userBubbleClassNameValue =
     classNames?.userBubble ?? (unstyled ? "" : undefined);
   const assistantBubbleClassNameValue =
@@ -270,6 +290,55 @@ export function MistralChat({
     classNames?.messageAttachmentFilename,
     classNames?.messageAttachmentMeta,
     classNames?.messageAttachmentUser,
+    unstyled,
+  ]);
+
+  const toolClassNames = useMemo(() => {
+    const provided =
+      classNames?.toolContainer ||
+      classNames?.toolTrigger ||
+      classNames?.toolName ||
+      classNames?.toolBadge ||
+      classNames?.toolContent ||
+      classNames?.toolInputContainer ||
+      classNames?.toolInputLabel ||
+      classNames?.toolInputContent ||
+      classNames?.toolOutputContainer ||
+      classNames?.toolOutputLabel ||
+      classNames?.toolOutputContent ||
+      classNames?.toolOutputError;
+
+    if (provided || unstyled) {
+      return {
+        container: classNames?.toolContainer ?? (unstyled ? "" : undefined),
+        trigger: classNames?.toolTrigger ?? (unstyled ? "" : undefined),
+        name: classNames?.toolName ?? (unstyled ? "" : undefined),
+        badge: classNames?.toolBadge ?? (unstyled ? "" : undefined),
+        content: classNames?.toolContent ?? (unstyled ? "" : undefined),
+        inputContainer: classNames?.toolInputContainer ?? (unstyled ? "" : undefined),
+        inputLabel: classNames?.toolInputLabel ?? (unstyled ? "" : undefined),
+        inputContent: classNames?.toolInputContent ?? (unstyled ? "" : undefined),
+        outputContainer: classNames?.toolOutputContainer ?? (unstyled ? "" : undefined),
+        outputLabel: classNames?.toolOutputLabel ?? (unstyled ? "" : undefined),
+        outputContent: classNames?.toolOutputContent ?? (unstyled ? "" : undefined),
+        outputError: classNames?.toolOutputError ?? (unstyled ? "" : undefined),
+      };
+    }
+
+    return undefined;
+  }, [
+    classNames?.toolContainer,
+    classNames?.toolTrigger,
+    classNames?.toolName,
+    classNames?.toolBadge,
+    classNames?.toolContent,
+    classNames?.toolInputContainer,
+    classNames?.toolInputLabel,
+    classNames?.toolInputContent,
+    classNames?.toolOutputContainer,
+    classNames?.toolOutputLabel,
+    classNames?.toolOutputContent,
+    classNames?.toolOutputError,
     unstyled,
   ]);
 
@@ -315,6 +384,7 @@ export function MistralChat({
         userBubbleClassName={userBubbleClassNameValue}
         assistantBubbleClassName={assistantBubbleClassNameValue}
         attachmentClassNames={attachmentClassNames}
+        toolClassNames={toolClassNames}
       />
     ),
     [
@@ -325,6 +395,7 @@ export function MistralChat({
       markdownComponents,
       messageWrapperClass,
       userBubbleClassNameValue,
+      toolClassNames,
     ]
   );
 
@@ -338,8 +409,11 @@ export function MistralChat({
 
   return (
     <div className={containerClass}>
-      <div ref={scrollRef} className={scrollAreaClass}>
-        <MessageList messages={orderedMessages} className={messageListClass} renderMessage={renderMessage} />
+      <div className="relative flex-1 min-h-0">
+        <div ref={scrollRef} className={scrollAreaClass}>
+          <MessageList messages={orderedMessages} className={messageListClass} renderMessage={renderMessage} />
+        </div>
+        {!unstyled && scrollFadeClass && <div className={scrollFadeClass} />}
       </div>
 
       {toolExecutor.error && (
@@ -362,7 +436,8 @@ export function MistralChat({
         />
       )}
 
-      <PromptInput onSubmit={handleSubmit} className={promptClass}>
+      <div className={promptWrapperClass}>
+        <PromptInput onSubmit={handleSubmit} className={promptClass}>
         {attachments.attachmentPreview && (
           <PromptAttachmentPreview
             fileName={attachments.attachmentPreview.fileName}
@@ -425,6 +500,7 @@ export function MistralChat({
           />
         )}
       </PromptInput>
+      </div>
     </div>
   );
 }
