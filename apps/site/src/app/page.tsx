@@ -101,7 +101,7 @@ export default function Home() {
             </a>
             <span className="text-mistral-black/30">·</span>
             <a
-              href="https://github.com/mattporteous/mistral-kit"
+              href="https://github.com/torteous44/mistral-kit"
               target="_blank"
               rel="noreferrer"
               className="inline-flex items-center gap-2 text-mistral-black/80 hover:text-mistral-orange transition-colors"
