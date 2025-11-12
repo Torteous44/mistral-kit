@@ -4,18 +4,18 @@
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import {
-  MistralChatPanel,
+  MistralChat,
   createWeatherTool,
   calculatorTool,
   dateTimeTool,
-  type MistralChatPanelProps,
+  type MistralChatProps,
   type ToolDefinition,
 } from "@matthewporteous/mistral-kit";
 
 const weatherTool = createWeatherTool({ apiProxyUrl: "/api/weather" });
 const BASE_TOOLS = [weatherTool, calculatorTool, dateTimeTool] as const;
 
-const basePanelConfig: Partial<MistralChatPanelProps> = {
+const basePanelConfig: Partial<MistralChatProps> = {
   apiProxyUrl: "/api/mistral",
   embeddingsOptions: { apiProxyUrl: "/api/embeddings" },
   uploadOptions: { apiUrl: "/api/upload-text", maxFileSizeMB: 4 },
@@ -32,10 +32,10 @@ type ShowcaseVariant = {
   containerClassName: string;
   badgeClassName: string;
   panelClassName: string;
-  panelOverrides: Partial<MistralChatPanelProps>;
+  panelOverrides: Partial<MistralChatProps>;
 };
 
-const variantClassNames: Record<string, NonNullable<MistralChatPanelProps["classNames"]>> = {
+const variantClassNames: Record<string, NonNullable<MistralChatProps["classNames"]>> = {
   support: {
     container:
       "flex h-full flex-col gap-4 rounded-[32px] border border-black bg-[#fdf3d7] p-4 shadow-[8px_8px_0_0_#000]",
@@ -344,7 +344,7 @@ export default function ShowcasePage() {
               const panelProps = {
                 ...basePanelConfig,
                 ...variant.panelOverrides,
-              } as MistralChatPanelProps;
+              } as MistralChatProps;
 
               return (
                 <section
@@ -358,7 +358,7 @@ export default function ShowcasePage() {
                     <h2 className="mt-3 text-2xl font-semibold">{variant.title}</h2>
                     <p className="mt-2 text-sm text-current/80">{variant.description}</p>
                   </div>
-                  <MistralChatPanel className={variant.panelClassName} {...panelProps} />
+                  <MistralChat className={variant.panelClassName} {...panelProps} />
                 </section>
               );
             })}

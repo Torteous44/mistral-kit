@@ -29,7 +29,7 @@ import { ChatStatus } from "./ChatStatus";
 import type { PrepareOptions } from "../utils/promptContext";
 import type { UseFileUploadOptions } from "../hooks/useFileUpload";
 
-export type MistralChatPanelClassNames = {
+export type MistralChatClassNames = {
   container?: string;
   scrollArea?: string;
   messageList?: string;
@@ -53,7 +53,7 @@ export type MistralChatPanelClassNames = {
   messageAttachmentMeta?: string;
 };
 
-export type MistralChatPanelProps = {
+export type MistralChatProps = {
   className?: string;
   model?: string;
   apiProxyUrl?: string;
@@ -75,7 +75,7 @@ export type MistralChatPanelProps = {
   markdownComponents?: Components;
   onActionSelect?: (prompt: string) => void;
   promptPlaceholder?: string;
-  classNames?: MistralChatPanelClassNames;
+  classNames?: MistralChatClassNames;
   unstyled?: boolean;
   animateAssistantResponses?: boolean;
 };
@@ -92,7 +92,7 @@ const applyClass = (
   return unstyled ? "" : fallback;
 };
 
-export function MistralChatPanel({
+export function MistralChat({
   className = "",
   model = "mistral-medium-latest",
   apiProxyUrl = "/api/mistral",
@@ -117,7 +117,7 @@ export function MistralChatPanel({
   classNames,
   unstyled = false,
   animateAssistantResponses = false,
-}: MistralChatPanelProps) {
+}: MistralChatProps) {
   const [draft, setDraft] = useState("");
   const scrollRef = useRef<HTMLDivElement | null>(null);
 
@@ -429,4 +429,4 @@ export function MistralChatPanel({
   );
 }
 
-export default MistralChatPanel;
+export default MistralChat;

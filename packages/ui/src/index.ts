@@ -7,9 +7,9 @@ export { default as StreamingMarkdown } from "./components/StreamingMarkdown";
 export { default as ToolCallBadge } from "./components/ToolCallBadge";
 export { default as FileUploadPanel } from "./components/FileUploadPanel";
 export {
-  default as MistralChatPanel,
-  type MistralChatPanelProps,
-  type MistralChatPanelClassNames,
+  default as MistralChat,
+  type MistralChatProps,
+  type MistralChatClassNames,
 } from "./components/MistralChatPanel";
 export {
   PromptInput,
