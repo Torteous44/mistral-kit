@@ -132,8 +132,10 @@ export default function Home() {
           <ol className="space-y-10">
             {steps.map((step, index) => (
               <li key={step.label} className="space-y-3">
-                <div className="flex items-baseline gap-3">
-                  <span className="text-xs font-medium text-mistral-orange tabular-nums">{index + 1}</span>
+                <div className="flex items-center gap-3">
+                  <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-mistral-orange text-[11px] font-semibold text-white tabular-nums">
+                    {index + 1}
+                  </span>
                   <h3 className="text-sm font-medium">{step.label}</h3>
                 </div>
                 <div className="overflow-x-auto rounded border border-mistral-black/10 bg-[#fafafa]">
@@ -166,7 +168,7 @@ export default function Home() {
                 <p className="text-xs text-mistral-black/60">Out of the box—no custom styling</p>
               </div>
               <div className="relative h-[500px] rounded-lg border border-mistral-black/10 overflow-hidden flex">
-                <div className="absolute -right-10 top-8 z-10 w-40 rotate-45 bg-mistral-orange py-1 text-center text-[9px] font-bold uppercase tracking-wider text-white">
+                <div className="absolute -right-14 top-4 z-10 w-40 rotate-45 bg-mistral-orange py-1 text-center text-[9px] font-bold uppercase tracking-wider text-white">
                   Try me
                 </div>
                 <MistralChat
@@ -190,7 +192,7 @@ export default function Home() {
                 <p className="text-xs text-mistral-black/60">Clean lines, subtle borders, maximum breathing room</p>
               </div>
               <div className="relative h-[500px] rounded-lg border border-mistral-black/5 overflow-hidden bg-white flex">
-                <div className="absolute -right-10 top-8 z-10 w-40 rotate-45 bg-mistral-orange py-1 text-center text-[9px] font-bold uppercase tracking-wider text-white">
+                <div className="absolute -right-14 top-4 z-10 w-40 rotate-45 bg-mistral-orange py-1 text-center text-[9px] font-bold uppercase tracking-wider text-white">
                   Try me
                 </div>
                 <MistralChat
@@ -220,7 +222,7 @@ export default function Home() {
                 <p className="text-xs text-mistral-black/60">High contrast, thick borders, strong shadows—with custom tool styling</p>
               </div>
               <div className="relative h-[500px] rounded-lg overflow-hidden flex">
-                <div className="absolute -right-10 top-8 z-10 w-40 rotate-45 bg-mistral-orange py-1 text-center text-[9px] font-bold uppercase tracking-wider text-white">
+                <div className="absolute -right-14 top-4 z-10 w-40 rotate-45 bg-mistral-orange py-1 text-center text-[9px] font-bold uppercase tracking-wider text-white">
                   Try me
                 </div>
                 <MistralChat
@@ -255,7 +257,7 @@ export default function Home() {
                 <p className="text-xs text-mistral-black/60">Terminal aesthetic with cyan accents and fade effect</p>
               </div>
               <div className="relative h-[500px] rounded-lg overflow-hidden bg-[#0a0a0a] flex">
-                <div className="absolute -right-10 top-8 z-10 w-40 rotate-45 bg-mistral-orange py-1 text-center text-[9px] font-bold uppercase tracking-wider text-white">
+                <div className="absolute -right-14 top-4 z-10 w-40 rotate-45 bg-mistral-orange py-1 text-center text-[9px] font-bold uppercase tracking-wider text-white">
                   Try me
                 </div>
                 <MistralChat
@@ -291,7 +293,7 @@ export default function Home() {
                 <p className="text-xs text-mistral-black/60">Gentle gradients and rounded corners</p>
               </div>
               <div className="relative h-[500px] rounded-2xl overflow-hidden flex">
-                <div className="absolute -right-10 top-8 z-10 w-40 rotate-45 bg-mistral-orange py-1 text-center text-[9px] font-bold uppercase tracking-wider text-white">
+                <div className="absolute -right-14 top-4 z-10 w-40 rotate-45 bg-mistral-orange py-1 text-center text-[9px] font-bold uppercase tracking-wider text-white">
                   Try me
                 </div>
                 <MistralChat
@@ -322,7 +324,7 @@ export default function Home() {
                 <p className="text-xs text-mistral-black/60">Dense layout for sidebar or widget use</p>
               </div>
               <div className="relative h-[500px] rounded-lg overflow-hidden bg-gray-50 flex">
-                <div className="absolute -right-10 top-8 z-10 w-40 rotate-45 bg-mistral-orange py-1 text-center text-[9px] font-bold uppercase tracking-wider text-white">
+                <div className="absolute -right-14 top-4 z-10 w-40 rotate-45 bg-mistral-orange py-1 text-center text-[9px] font-bold uppercase tracking-wider text-white">
                   Try me
                 </div>
                 <MistralChat
